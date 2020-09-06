@@ -1,11 +1,26 @@
 const legibleMergeable = require('../dist/legible-mergeable.js')
 const expect = require('chai').expect
 
+/*
+ * This wrapper function protects me to change hundreds of lines of TEST code.
+ * This merge functions/tests were not supposed to handle the high level API.
+ * It's completely unecessary to include the _changes inside
+ * the arrays and objects themself. #sorrynotsorry
+ */
 function merge (docA, docB) {
-  return legibleMergeable.merge(
-    legibleMergeable.create(docA),
-    legibleMergeable.create(docB)
-  )
+  const hasKey = (object, key) => Object.prototype.hasOwnProperty.call(object, key)
+
+  if (Array.isArray(docA)) {
+    const changesA = docA.find(item => hasKey(item, '_changes'))._changes
+    const changesB = docB.find(item => hasKey(item, '_changes'))._changes
+
+    const result = legibleMergeable.mergeDumps().mergeArray(docA, changesA, docB, changesB)
+    result.content.push({ _changes: result.changes })
+    return result.content
+  } else if (typeof docA === 'object') {
+    const result = legibleMergeable.mergeDumps().mergeObject(docA, docA._changes, docB, docB._changes)
+    return { ...result.content, _changes: result.changes }
+  }
 }
 
 function parseChangeDates (changes) {
@@ -543,9 +558,6 @@ describe('merge arrays', function () {
     expect(merge(replicaA, merge(replicaB, replicaC))).to.eql(expected)
     expect(merge(replicaB, merge(replicaA, replicaC))).to.eql(expected)
     // expect(merge(replicaB, replicaA)).to.eql(expected)
-    // reorders can not be shortcut with a delete/insertion, because with two
-    // conflicting moves would create duplicates because their each had their
-    // own id.
   })
 
   xit('multiple insertions and deletions by three replicas', function () {
@@ -592,14 +604,6 @@ describe('merge arrays', function () {
     expect(merge(replicaC, replicaC)).to.eql(replicaC)
     expect(merge(replicaB, merge(replicaA, replicaC))).to.eql(expected)
     expect(merge(replicaC, merge(replicaB, replicaA))).to.eql(expected)
-    // two insertions W9 and UQ are switched, because i don't have any condition
-    // for ordering multiple insertions at the same place. i could use the
-    // change dates to order them, but the bigger challenge is to adapt the
-    // structure of the algorithm, because i would need to look forward somehow
-    // to check if their are upcoming insertions.
-    // i could mark insertions in the main loop and after the main loop i run
-    // over the ids once again and look out for following insertions and sort
-    // them after their date...
     expect(merge(replicaA, merge(replicaB, replicaC))).to.eql(expected)
   })
 })

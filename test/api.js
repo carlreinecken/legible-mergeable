@@ -124,10 +124,10 @@ describe('merge', function () {
     replicaB.set('isCold', false, date)
     replicaB.delete('price', date)
 
-    const replicaC1 = replicaA.merge(replicaB)
+    const replicaC1 = legibleMergeable.merge(replicaA, replicaB)
     const replicaC2 = replicaB.merge(replicaA)
 
-    const { _changes, ...dump } = replicaC1
+    const { _changes, ...dump } = replicaC1.dump()
     const expected = {
       name: 'Almondmilk',
       isCold: true,
@@ -136,6 +136,8 @@ describe('merge', function () {
 
     expect(replicaC1).to.eql(replicaC2)
     expect(dump).to.eql(expected)
+    expect(replicaA.size()).to.equal(4)
+    expect(replicaB.size()).to.equal(3)
     expect(_changes.name.getTime()).to.equal(date.getTime())
     expect(_changes.price.getTime()).to.equal(date.getTime())
     expect(_changes.isCold.getTime()).to.equal((new Date('2020-08-05')).getTime())

@@ -1,15 +1,11 @@
 import util from './util'
-import { CHANGES_KEY } from './constants'
 
-export function mergeArray (docA, docB) {
+export function mergeArray (docA, changesA, docB, changesB) {
   const docs = {
     a: docA.map(item => item.id),
     b: docB.map(item => item.id)
   }
-  const changes = {
-    a: docA.find(item => util.hasKey(item, CHANGES_KEY))[CHANGES_KEY],
-    b: docB.find(item => util.hasKey(item, CHANGES_KEY))[CHANGES_KEY]
-  }
+  const changes = { a: changesA, b: changesB }
 
   const resultIds = []
   let counter = 0
@@ -166,22 +162,13 @@ export function mergeArray (docA, docB) {
     return { ...obj, [id]: new Date(previousChange) }
   }, {})
 
-  result.push({ [CHANGES_KEY]: resultChanges })
-
-  return result
+  return { content: result, changes: resultChanges }
 }
 
-export function mergeObject (docA, docB) {
-  const docResult = {}
-  docResult[CHANGES_KEY] = {}
-
-  const changes = {
-    a: docA[CHANGES_KEY],
-    b: docB[CHANGES_KEY]
-  }
-
-  delete docA[CHANGES_KEY]
-  delete docB[CHANGES_KEY]
+export function mergeObject (docA, changesA, docB, changesB) {
+  const changes = { a: changesA, b: changesB }
+  const resultChanges = {}
+  const result = {}
 
   const properties = [...new Set([].concat(
     Object.keys(docA),
@@ -196,30 +183,30 @@ export function mergeObject (docA, docB) {
 
     if (aChangeAt > bChangeAt) {
       if (util.hasKey(docA, prop)) {
-        docResult[prop] = docA[prop]
+        result[prop] = docA[prop]
       }
-      docResult[CHANGES_KEY][prop] = aChangeAt
+      resultChanges[prop] = aChangeAt
     } else if (aChangeAt < bChangeAt) {
       if (util.hasKey(docB, prop)) {
-        docResult[prop] = docB[prop]
+        result[prop] = docB[prop]
       }
-      docResult[CHANGES_KEY][prop] = bChangeAt
+      resultChanges[prop] = bChangeAt
     } else {
       if (util.hasKey(docA, prop)) {
-        docResult[prop] = docA[prop]
+        result[prop] = docA[prop]
       } else if (util.hasKey(docB, prop)) {
-        docResult[prop] = docB[prop]
+        result[prop] = docB[prop]
       }
 
-      if (!util.hasKey(docResult[CHANGES_KEY], prop)) {
+      if (!util.hasKey(resultChanges, prop)) {
         if (util.hasKey(changes.a, prop)) {
-          docResult[CHANGES_KEY][prop] = aChangeAt
+          resultChanges[prop] = aChangeAt
         } else if (util.hasKey(changes.b, prop)) {
-          docResult[CHANGES_KEY][prop] = bChangeAt
+          resultChanges[prop] = bChangeAt
         }
       }
     }
   }
 
-  return docResult
+  return { content: result, changes: resultChanges }
 }

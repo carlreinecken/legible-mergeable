@@ -84,6 +84,9 @@ export default class legibleMergeable {
   }
 
   size () {
+    if (this.isObject()) {
+      return Object.keys(this.state).length
+    }
   }
 
   /*
@@ -118,21 +121,35 @@ export default class legibleMergeable {
     return JSON.stringify(this.dump())
   }
 
-  // TODO: return a new instance of legibleMergeable
   static merge (stateA, stateB) {
     if (stateA.isArray() && stateB.isArray()) {
-      return mergeArray(stateA.dump(), stateB.dump())
+      const result = mergeArray(stateA.state, stateA.changes, stateB.state, stateB.changes)
+      result.content.push({ [CHANGES_KEY]: result.changes })
+      return legibleMergeable.create(result.content)
     } else if (stateA.isObject() && stateB.isObject()) {
-      return mergeObject(stateA.dump(), stateB.dump())
+      const result = mergeObject(stateA.state, stateA.changes, stateB.state, stateB.changes)
+      return legibleMergeable.create({
+        ...result.content,
+        [CHANGES_KEY]: result.changes
+      })
     }
   }
 
   merge (stateB) {
-    if (!(stateB instanceof legibleMergeable)) {
-      return
+    if (this.isArray() && stateB.isArray()) {
+      const result = mergeArray(this.state, this.changes, stateB.state, stateB.changes)
+      this.state = result.content
+      this.changes = result.changes
+      return this
+    } else if (this.isObject() && stateB.isObject()) {
+      const result = mergeObject(this.state, this.changes, stateB.state, stateB.changes)
+      this.state = result.content
+      this.changes = result.changes
+      return this
     }
+  }
 
-    // TODO update this object and return this
-    return legibleMergeable.merge(this, stateB)
+  static mergeDumps () {
+    return { mergeArray: mergeArray, mergeObject: mergeObject }
   }
 }

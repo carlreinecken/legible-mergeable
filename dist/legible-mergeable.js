@@ -26,15 +26,12 @@
 
   const CHANGES_KEY = '_changes';
 
-  function mergeArray (docA, docB) {
+  function mergeArray (docA, changesA, docB, changesB) {
     const docs = {
       a: docA.map(item => item.id),
       b: docB.map(item => item.id)
     };
-    const changes = {
-      a: docA.find(item => util.hasKey(item, CHANGES_KEY))[CHANGES_KEY],
-      b: docB.find(item => util.hasKey(item, CHANGES_KEY))[CHANGES_KEY]
-    };
+    const changes = { a: changesA, b: changesB };
 
     const resultIds = [];
     let counter = 0;
@@ -191,22 +188,13 @@
       return { ...obj, [id]: new Date(previousChange) }
     }, {});
 
-    result.push({ [CHANGES_KEY]: resultChanges });
-
-    return result
+    return { content: result, changes: resultChanges }
   }
 
-  function mergeObject (docA, docB) {
-    const docResult = {};
-    docResult[CHANGES_KEY] = {};
-
-    const changes = {
-      a: docA[CHANGES_KEY],
-      b: docB[CHANGES_KEY]
-    };
-
-    delete docA[CHANGES_KEY];
-    delete docB[CHANGES_KEY];
+  function mergeObject (docA, changesA, docB, changesB) {
+    const changes = { a: changesA, b: changesB };
+    const resultChanges = {};
+    const result = {};
 
     const properties = [...new Set([].concat(
       Object.keys(docA),
@@ -221,32 +209,32 @@
 
       if (aChangeAt > bChangeAt) {
         if (util.hasKey(docA, prop)) {
-          docResult[prop] = docA[prop];
+          result[prop] = docA[prop];
         }
-        docResult[CHANGES_KEY][prop] = aChangeAt;
+        resultChanges[prop] = aChangeAt;
       } else if (aChangeAt < bChangeAt) {
         if (util.hasKey(docB, prop)) {
-          docResult[prop] = docB[prop];
+          result[prop] = docB[prop];
         }
-        docResult[CHANGES_KEY][prop] = bChangeAt;
+        resultChanges[prop] = bChangeAt;
       } else {
         if (util.hasKey(docA, prop)) {
-          docResult[prop] = docA[prop];
+          result[prop] = docA[prop];
         } else if (util.hasKey(docB, prop)) {
-          docResult[prop] = docB[prop];
+          result[prop] = docB[prop];
         }
 
-        if (!util.hasKey(docResult[CHANGES_KEY], prop)) {
+        if (!util.hasKey(resultChanges, prop)) {
           if (util.hasKey(changes.a, prop)) {
-            docResult[CHANGES_KEY][prop] = aChangeAt;
+            resultChanges[prop] = aChangeAt;
           } else if (util.hasKey(changes.b, prop)) {
-            docResult[CHANGES_KEY][prop] = bChangeAt;
+            resultChanges[prop] = bChangeAt;
           }
         }
       }
     }
 
-    return docResult
+    return { content: result, changes: resultChanges }
   }
 
   const TYPES = {
@@ -331,6 +319,9 @@
     }
 
     size () {
+      if (this.isObject()) {
+        return Object.keys(this.state).length
+      }
     }
 
     /*
@@ -367,19 +358,34 @@
 
     static merge (stateA, stateB) {
       if (stateA.isArray() && stateB.isArray()) {
-        return mergeArray(stateA.dump(), stateB.dump())
+        const result = mergeArray(stateA.state, stateA.changes, stateB.state, stateB.changes);
+        result.content.push({ [CHANGES_KEY]: result.changes });
+        return legibleMergeable.create(result.content)
       } else if (stateA.isObject() && stateB.isObject()) {
-        return mergeObject(stateA.dump(), stateB.dump())
+        const result = mergeObject(stateA.state, stateA.changes, stateB.state, stateB.changes);
+        return legibleMergeable.create({
+          ...result.content,
+          [CHANGES_KEY]: result.changes
+        })
       }
     }
 
-    // TODO: get back an instance of legibleMergeable
     merge (stateB) {
-      if (!(stateB instanceof legibleMergeable)) {
-        return
+      if (this.isArray() && stateB.isArray()) {
+        const result = mergeArray(this.state, this.changes, stateB.state, stateB.changes);
+        this.state = result.content;
+        this.changes = result.changes;
+        return this
+      } else if (this.isObject() && stateB.isObject()) {
+        const result = mergeObject(this.state, this.changes, stateB.state, stateB.changes);
+        this.state = result.content;
+        this.changes = result.changes;
+        return this
       }
+    }
 
-      return legibleMergeable.merge(this, stateB)
+    static mergeDumps () {
+      return { mergeArray: mergeArray, mergeObject: mergeObject }
     }
   }
 
