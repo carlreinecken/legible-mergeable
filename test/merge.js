@@ -1,5 +1,12 @@
-const merge = require('./dist/merge.js')
+const legibleMergeable = require('../dist/legible-mergeable.js')
 const expect = require('chai').expect
+
+function merge (docA, docB) {
+  return legibleMergeable.merge(
+    legibleMergeable.create(docA),
+    legibleMergeable.create(docB)
+  )
+}
 
 /* eslint-disable no-unused-expressions */
 

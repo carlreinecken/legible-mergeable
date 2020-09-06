@@ -5,16 +5,15 @@
   "license": "MIT",
   "description": "",
   "author": "Carl Reinecken",
-  "main": "dist/merge.js",
-  "module": "src/merge.js",
+  "main": "dist/legible-mergeable.js",
   "scripts": {
     "pretest": "npm run build",
     "test": "mocha",
     "lint": "standard",
     "clean": "rm -r dist && mkdir dist",
     "prebuild": "npm run lint && npm run clean",
-    "build": "rollup merge.js --file dist/merge.js --format umd --name merge",
-    "postbuild": "terser dist/merge.js > dist/merge.min.js"
+    "build": "rollup src/index.js --file dist/legible-mergeable.js --format umd --name legible-mergeable",
+    "postbuild": "terser dist/legible-mergeable.js > dist/legible-mergeable.min.js"
   },
   "standard": {
     "ignore": [

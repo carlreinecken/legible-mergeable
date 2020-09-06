@@ -1,25 +1,14 @@
-const CHANGES_PROPERTY = '_changes'
+import util from './util'
+import { CHANGES_KEY } from './constants'
 
-function hasKey (object, key) {
-  return Object.prototype.hasOwnProperty.call(object, key)
-}
-
-export default function (docA, docB) {
-  if (Array.isArray(docA)) {
-    return mergeArray(docA, docB)
-  } else {
-    return mergeObjects(docA, docB)
-  }
-}
-
-function mergeArray (docA, docB) {
+export function mergeArray (docA, docB) {
   const docs = {
     a: docA.map(item => item.id),
     b: docB.map(item => item.id)
   }
   const changes = {
-    a: docA.find(item => hasKey(item, CHANGES_PROPERTY))[CHANGES_PROPERTY],
-    b: docB.find(item => hasKey(item, CHANGES_PROPERTY))[CHANGES_PROPERTY]
+    a: docA.find(item => util.hasKey(item, CHANGES_KEY))[CHANGES_KEY],
+    b: docB.find(item => util.hasKey(item, CHANGES_KEY))[CHANGES_KEY]
   }
 
   const resultIds = []
@@ -44,14 +33,14 @@ function mergeArray (docA, docB) {
     }
 
     const win = (side, origin) => {
-      console.log(id.a, id.b, side, origin)
+      // console.log(id.a, id.b, side, origin)
       resultIds.push(shift(side))
     }
-    console.log(id.a, id.b, '...')
+    // console.log(id.a, id.b, '...')
 
     if (id.a === id.b && (change.a.a || new Date()).getTime() ===
       (change.b.b || new Date()).getTime()) {
-      console.log(id.a, id.b, 'both')
+      // console.log(id.a, id.b, 'both')
       resultIds.push(shiftBoth()); continue
     }
 
@@ -177,12 +166,12 @@ function mergeArray (docA, docB) {
     return { ...obj, [id]: new Date(blub) }
   }, {})
 
-  result.push({ [CHANGES_PROPERTY]: resultChanges })
+  result.push({ [CHANGES_KEY]: resultChanges })
 
   return result
 }
 
-function mergeObjects (docA, docB) {
+export function mergeObject (docA, docB) {
   const docResult = {
     content: {},
     changes: {}
@@ -200,26 +189,26 @@ function mergeObjects (docA, docB) {
     const bChangeAt = docB.changes[prop] ? new Date(docB.changes[prop]) : null
 
     if (aChangeAt > bChangeAt) {
-      if (hasKey(docA.content, prop)) {
+      if (util.hasKey(docA.content, prop)) {
         docResult.content[prop] = docA.content[prop]
       }
       docResult.changes[prop] = docA.changes[prop]
     } else if (aChangeAt < bChangeAt) {
-      if (hasKey(docB.content, prop)) {
+      if (util.hasKey(docB.content, prop)) {
         docResult.content[prop] = docB.content[prop]
       }
       docResult.changes[prop] = docB.changes[prop]
     } else {
-      if (hasKey(docA.content, prop)) {
+      if (util.hasKey(docA.content, prop)) {
         docResult.content[prop] = docA.content[prop]
-      } else if (hasKey(docB.content, prop)) {
+      } else if (util.hasKey(docB.content, prop)) {
         docResult.content[prop] = docB.content[prop]
       }
 
-      if (!hasKey(docResult.changes, prop)) {
-        if (hasKey(docA.changes, prop)) {
+      if (!util.hasKey(docResult.changes, prop)) {
+        if (util.hasKey(docA.changes, prop)) {
           docResult.changes[prop] = docA.changes[prop]
-        } else if (hasKey(docB.changes, prop)) {
+        } else if (util.hasKey(docB.changes, prop)) {
           docResult.changes[prop] = docB.changes[prop]
         }
       }

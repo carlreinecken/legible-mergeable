@@ -1,22 +1,23 @@
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
   typeof define === 'function' && define.amd ? define(factory) :
-  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.merge = factory());
+  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global['legible-mergeable'] = factory());
 }(this, (function () { 'use strict';
-
-  const CHANGES_PROPERTY = '_changes';
 
   function hasKey (object, key) {
     return Object.prototype.hasOwnProperty.call(object, key)
   }
 
-  function merge (docA, docB) {
-    if (Array.isArray(docA)) {
-      return mergeArray(docA, docB)
-    } else {
-      return mergeObjects(docA, docB)
-    }
+  function deepCopy (value) {
+    return JSON.parse(JSON.stringify(value))
   }
+
+  var util = {
+    hasKey,
+    deepCopy
+  };
+
+  const CHANGES_KEY = '_changes';
 
   function mergeArray (docA, docB) {
     const docs = {
@@ -24,8 +25,8 @@
       b: docB.map(item => item.id)
     };
     const changes = {
-      a: docA.find(item => hasKey(item, CHANGES_PROPERTY))[CHANGES_PROPERTY],
-      b: docB.find(item => hasKey(item, CHANGES_PROPERTY))[CHANGES_PROPERTY]
+      a: docA.find(item => util.hasKey(item, CHANGES_KEY))[CHANGES_KEY],
+      b: docB.find(item => util.hasKey(item, CHANGES_KEY))[CHANGES_KEY]
     };
 
     const resultIds = [];
@@ -50,14 +51,14 @@
       };
 
       const win = (side, origin) => {
-        console.log(id.a, id.b, side, origin);
+        // console.log(id.a, id.b, side, origin)
         resultIds.push(shift(side));
       };
-      console.log(id.a, id.b, '...');
+      // console.log(id.a, id.b, '...')
 
       if (id.a === id.b && (change.a.a || new Date()).getTime() ===
         (change.b.b || new Date()).getTime()) {
-        console.log(id.a, id.b, 'both');
+        // console.log(id.a, id.b, 'both')
         resultIds.push(shiftBoth()); continue
       }
 
@@ -75,14 +76,14 @@
           // both have an addition
           if (change.a.a > change.b.b) {
             // b is younger
-            win('b', 1); continue
+            win('b'); continue
           } else if (change.a.a < change.b.b) {
             // a is younger
-            win('a', 2); continue
+            win('a'); continue
           }
         } else {
           // only a has an addition
-          win('a', 3); continue
+          win('a'); continue
         }
       }
 
@@ -92,14 +93,14 @@
           // both have an addition
           if (change.b.b > change.a.a) {
             // a is younger
-            win('a', 4); continue
+            win('a'); continue
           } else if (change.b.b < change.a.a) {
             // b is younger
-            win('b', 5); continue
+            win('b'); continue
           }
         } else {
           // only b has an addition
-          win('b', 6); continue
+          win('b'); continue
         }
       }
 
@@ -146,7 +147,7 @@
       }
 
       // TODO: throw error?
-      console.warn('were not caught by any condition', id, change);
+      // console.warn('were not caught by any condition', id, change)
 
       if (counter++ > docs.a.length + docs.b.length) {
         break
@@ -183,12 +184,12 @@
       return { ...obj, [id]: new Date(blub) }
     }, {});
 
-    result.push({ [CHANGES_PROPERTY]: resultChanges });
+    result.push({ [CHANGES_KEY]: resultChanges });
 
     return result
   }
 
-  function mergeObjects (docA, docB) {
+  function mergeObject (docA, docB) {
     const docResult = {
       content: {},
       changes: {}
@@ -206,26 +207,26 @@
       const bChangeAt = docB.changes[prop] ? new Date(docB.changes[prop]) : null;
 
       if (aChangeAt > bChangeAt) {
-        if (hasKey(docA.content, prop)) {
+        if (util.hasKey(docA.content, prop)) {
           docResult.content[prop] = docA.content[prop];
         }
         docResult.changes[prop] = docA.changes[prop];
       } else if (aChangeAt < bChangeAt) {
-        if (hasKey(docB.content, prop)) {
+        if (util.hasKey(docB.content, prop)) {
           docResult.content[prop] = docB.content[prop];
         }
         docResult.changes[prop] = docB.changes[prop];
       } else {
-        if (hasKey(docA.content, prop)) {
+        if (util.hasKey(docA.content, prop)) {
           docResult.content[prop] = docA.content[prop];
-        } else if (hasKey(docB.content, prop)) {
+        } else if (util.hasKey(docB.content, prop)) {
           docResult.content[prop] = docB.content[prop];
         }
 
-        if (!hasKey(docResult.changes, prop)) {
-          if (hasKey(docA.changes, prop)) {
+        if (!util.hasKey(docResult.changes, prop)) {
+          if (util.hasKey(docA.changes, prop)) {
             docResult.changes[prop] = docA.changes[prop];
-          } else if (hasKey(docB.changes, prop)) {
+          } else if (util.hasKey(docB.changes, prop)) {
             docResult.changes[prop] = docB.changes[prop];
           }
         }
@@ -235,6 +236,138 @@
     return docResult
   }
 
-  return merge;
+  const TYPES = {
+    OBJECT: 'OBJECT',
+    ARRAY: 'ARRAY'
+  };
+
+  class legibleMergeable {
+    constructor (type, state, changes) {
+      this.type = type;
+      this.state = state;
+      this.changes = changes;
+    }
+
+    static create (object) {
+      if (Array.isArray(object)) {
+        let changes = {};
+        const state = util.deepCopy(object);
+
+        const changesIndex = state.findIndex(item => util.hasKey(item, CHANGES_KEY));
+        if (changesIndex > 0) {
+          changes = state.splice(changesIndex, 1)[0][CHANGES_KEY];
+        }
+
+        return new this(TYPES.ARRAY, state, changes)
+      } else if (typeof object === 'object') {
+        let changes = {};
+        const state = util.deepCopy(object);
+
+        if (util.hasKey(state, CHANGES_KEY)) {
+          changes = state[CHANGES_KEY];
+          delete state[CHANGES_KEY];
+        }
+
+        return new this(TYPES.OBJECT, state, changes)
+      }
+    }
+
+    isObject () {
+      return this.type === TYPES.OBJECT
+    }
+
+    isArray () {
+      return this.type === TYPES.ARRAY
+    }
+
+    has (key) {
+      return util.hasKey(this.state, key)
+    }
+
+    get (key) {
+      if (this.has(key)) {
+        return this.state[key]
+      }
+    }
+
+    set (key, value, date) {
+      if (this.isArray()) {
+        throw new Error('set() was used on a mergeable array, set() is only for objects')
+      }
+
+      this.state[key] = value;
+      this.changes[key] = date || new Date();
+    }
+
+    delete (key, date) {
+      delete this.state[key];
+      this.changes[key] = date || new Date();
+    }
+
+    add () {
+    }
+
+    replace () {
+    }
+
+    move () {
+    }
+
+    size () {
+    }
+
+    /*
+     * The state without the changes, it's the "pure" document
+     * @return the state
+     */
+    toBase () {
+      return util.deepCopy(this.state)
+    }
+
+    /*
+     * Dumps the object or the array as native value
+     * @return
+     */
+    dump () {
+      if (this.isObject()) {
+        return {
+          ...this.state,
+          [CHANGES_KEY]: this.changes
+        }
+      }
+
+      if (this.isArray()) {
+        return [
+          ...this.state,
+          { [CHANGES_KEY]: this.changes }
+        ]
+      }
+    }
+
+    toString () {
+      return JSON.stringify(this.dump())
+    }
+
+    static merge (stateA, stateB) {
+      if (stateA.isArray() && stateB.isArray()) {
+        return mergeArray(stateA.dump(), stateB.dump())
+      } else if (stateA.isObject() && stateB.isObject()) {
+        return mergeObject(stateA.dump(), stateB.dump())
+      }
+    }
+
+    merge (stateB) {
+      if (!(stateB instanceof legibleMergeable)) {
+        return
+      }
+
+      return legibleMergeable.merge(
+        this.dump(),
+        stateB.dump()
+      )
+    }
+  }
+
+  return legibleMergeable;
 
 })));
