@@ -26,7 +26,7 @@ describe('create', function () {
       name: 'Oatmilk',
       price: 140,
       _changes: {
-        price: '2020-08-26'
+        price: new Date('2020-08-26')
       }
     }
 
@@ -66,22 +66,27 @@ describe('manipulate', function () {
   })
 
   it('a mergeable object with changes', function () {
-    const date = new Date()
+    const date = new Date('2020-09-06')
     const original = {
       id: 1,
       name: 'Oatmilk',
       price: 240,
       isOpen: true,
       _changes: {
-        name: '2020-08-03',
-        isOpen: '2020-08-05'
+        name: new Date('2020-08-03'),
+        isOpen: new Date('2020-08-05'),
+        price: new Date('2020-09-01')
       }
     }
     const item = legibleMergeable.create(original)
 
-    item.set('name', 'Almondmilk', date)
-    item.delete('isOpen', date)
-    item.set('isCold', true, date)
+    if (item.get('price') > 200) {
+      item.set('name', 'Almondmilk', date)
+      item.delete('isOpen', date)
+    }
+    if (!item.has('isOpen')) {
+      item.set('isCold', true, date)
+    }
 
     const { _changes, ...dump } = item.dump()
     const expected = {
@@ -95,7 +100,45 @@ describe('manipulate', function () {
     expect(_changes.name.getTime()).to.equal(date.getTime())
     expect(_changes.isCold.getTime()).to.equal(date.getTime())
     expect(_changes.isOpen.getTime()).to.equal(date.getTime())
-    expect(_changes.price).to.be.undefined
+    expect(_changes.price.getTime()).to.equal((new Date('2020-09-01').getTime()))
     expect(_changes.id).to.be.undefined
+  })
+})
+
+describe('merge', function () {
+  it('a cloned and changed object', function () {
+    const replicaA = legibleMergeable.create({
+      name: 'Oatmilk',
+      price: 120,
+      isCold: true,
+      isOpen: false,
+      _changes: {
+        name: '2020-08-03',
+        isCold: '2020-08-05'
+      }
+    })
+
+    const replicaB = replicaA.clone()
+    const date = new Date('2020-08-04')
+    replicaB.set('name', 'Almondmilk', date)
+    replicaB.set('isCold', false, date)
+    replicaB.delete('price', date)
+
+    const replicaC1 = replicaA.merge(replicaB)
+    const replicaC2 = replicaB.merge(replicaA)
+
+    const { _changes, ...dump } = replicaC1
+    const expected = {
+      name: 'Almondmilk',
+      isCold: true,
+      isOpen: false
+    }
+
+    expect(replicaC1).to.eql(replicaC2)
+    expect(dump).to.eql(expected)
+    expect(_changes.name.getTime()).to.equal(date.getTime())
+    expect(_changes.price.getTime()).to.equal(date.getTime())
+    expect(_changes.isCold.getTime()).to.equal((new Date('2020-08-05')).getTime())
+    expect(_changes.isOpen).to.be.undefined
   })
 })

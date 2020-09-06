@@ -21,7 +21,7 @@ export default class legibleMergeable {
 
       const changesIndex = state.findIndex(item => util.hasKey(item, CHANGES_KEY))
       if (changesIndex > 0) {
-        changes = state.splice(changesIndex, 1)[0][CHANGES_KEY]
+        changes = util.parseChangeDates(state.splice(changesIndex, 1)[0][CHANGES_KEY])
       }
 
       return new this(TYPES.ARRAY, state, changes)
@@ -30,12 +30,16 @@ export default class legibleMergeable {
       const state = util.deepCopy(object)
 
       if (util.hasKey(state, CHANGES_KEY)) {
-        changes = state[CHANGES_KEY]
+        changes = util.parseChangeDates(state[CHANGES_KEY])
         delete state[CHANGES_KEY]
       }
 
       return new this(TYPES.OBJECT, state, changes)
     }
+  }
+
+  clone () {
+    return legibleMergeable.create(this.dump())
   }
 
   isObject () {
@@ -62,12 +66,12 @@ export default class legibleMergeable {
     }
 
     this.state[key] = value
-    this.changes[key] = date || new Date()
+    this.changes[key] = new Date(date) || new Date()
   }
 
   delete (key, date) {
     delete this.state[key]
-    this.changes[key] = date || new Date()
+    this.changes[key] = new Date(date) || new Date()
   }
 
   add () {
@@ -114,6 +118,7 @@ export default class legibleMergeable {
     return JSON.stringify(this.dump())
   }
 
+  // TODO: return a new instance of legibleMergeable
   static merge (stateA, stateB) {
     if (stateA.isArray() && stateB.isArray()) {
       return mergeArray(stateA.dump(), stateB.dump())
@@ -127,9 +132,7 @@ export default class legibleMergeable {
       return
     }
 
-    return legibleMergeable.merge(
-      this.dump(),
-      stateB.dump()
-    )
+    // TODO update this object and return this
+    return legibleMergeable.merge(this, stateB)
   }
 }
