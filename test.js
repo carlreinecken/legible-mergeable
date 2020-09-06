@@ -275,7 +275,6 @@ describe('arrays', function () {
       {
         _changes: {
           HH: '2020-07-15',
-          '6A': '2020-07-20',
           '3C': '2020-07-01'
         }
       }
@@ -290,8 +289,7 @@ describe('arrays', function () {
           T5: new Date('2020-07-23'),
           W9: new Date('2020-07-09'),
           HH: new Date('2020-07-15'),
-          '3C': new Date('2020-07-20'),
-          '6A': new Date('2020-07-20')
+          '3C': new Date('2020-07-20')
         }
       }
     ]
@@ -510,5 +508,63 @@ describe('arrays', function () {
     expect(merge(replicaA, merge(replicaB, replicaC))).to.eql(expected)
     expect(merge(replicaB, merge(replicaA, replicaC))).to.eql(expected)
     // expect(merge(replicaB, replicaA)).to.eql(expected)
+    // reorders can not be shortcut with a delete/insertion, because with two
+    // conflicting moves would create duplicates because their each had their
+    // own id.
+  })
+
+  xit('multiple insertions and deletions by three replicas', function () {
+    const replicaA = [
+      { id: 'S4' }, { id: 'RC' }, { id: 'W9' }, { id: 'ED' },
+      {
+        _changes: {
+          W9: new Date('2020-07-09')
+        }
+      }
+    ]
+
+    const replicaB = [
+      { id: 'S4' }, { id: 'ED' },
+      {
+        _changes: {
+          RC: new Date('2020-07-15')
+        }
+      }
+    ]
+
+    const replicaC = [
+      { id: 'S4' }, { id: 'RC' }, { id: 'UQ' }, { id: 'ED' },
+      {
+        _changes: {
+          UQ: new Date('2020-09-05')
+        }
+      }
+    ]
+
+    const expected = [
+      { id: 'S4' }, { id: 'W9' }, { id: 'UQ' }, { id: 'ED' },
+      {
+        _changes: {
+          RC: new Date('2020-07-15'),
+          W9: new Date('2020-07-09'),
+          UQ: new Date('2020-09-05')
+        }
+      }
+    ]
+
+    expect(merge(replicaA, replicaA)).to.eql(replicaA)
+    expect(merge(replicaB, replicaB)).to.eql(replicaB)
+    expect(merge(replicaC, replicaC)).to.eql(replicaC)
+    expect(merge(replicaB, merge(replicaA, replicaC))).to.eql(expected)
+    expect(merge(replicaC, merge(replicaB, replicaA))).to.eql(expected)
+    // two insertions W9 and UQ are switched, because i don't have any condition
+    // for ordering multiple insertions at the same place. i could use the
+    // change dates to order them, but the bigger challenge is to adapt the
+    // structure of the algorithm, because i would need to look forward somehow
+    // to check if their are upcoming insertions.
+    // i could mark insertions in the main loop and after the main loop i run
+    // over the ids once again and look out for following insertions and sort
+    // them after their date...
+    expect(merge(replicaA, merge(replicaB, replicaC))).to.eql(expected)
   })
 })

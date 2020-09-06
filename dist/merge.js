@@ -19,7 +19,6 @@
   }
 
   function mergeArray (docA, docB) {
-    // console.log('MERGE ARRAY')
     const docs = {
       a: docA.map(item => item.id),
       b: docB.map(item => item.id)
