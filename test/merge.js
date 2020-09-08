@@ -229,6 +229,53 @@ describe('merge arrays', function () {
     expect(merge(docB, docA)).to.eql(expected)
   })
 
+  xit('multiple insertions by both replicas after deleting everything', function () {
+    const docA = [
+      { id: 'ED' }, { id: 'YY' }, { id: 'A6' },
+      {
+        _changes: {
+          W9: '2020-07-01',
+          ED: '2020-07-05',
+          A6: '2020-07-09',
+          44: '2020-07-04'
+        }
+      }
+    ]
+
+    const docB = [
+      { id: 'X2' }, { id: 'YY' }, { id: '77' },
+      {
+        _changes: {
+          W9: '2020-07-09',
+          44: '2020-07-10',
+          X2: '2020-07-11',
+          77: '2020-07-30'
+        }
+      }
+    ]
+
+    const expected = [
+      { id: 'ED' },
+      { id: 'X2' },
+      { id: 'YY' },
+      { id: 'A6' },
+      { id: '77' },
+      {
+        _changes: {
+          ED: new Date('2020-07-05'),
+          A6: new Date('2020-07-09'),
+          W9: new Date('2020-07-09'),
+          44: new Date('2020-07-10'),
+          X2: new Date('2020-07-11'),
+          77: new Date('2020-07-30')
+        }
+      }
+    ]
+
+    expect(merge(docA, docB)).to.eql(expected)
+    expect(merge(docB, docA)).to.eql(expected)
+  })
+
   it('multiple deletions by one replica', function () {
     const replicaA = [
       { id: '44' }, { id: '6A' },

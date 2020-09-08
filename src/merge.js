@@ -1,5 +1,12 @@
 import util from './util'
 
+export function mergeArrayIm (docA, metaA, docB, metaB) {
+  // take the entire order from the one with the latest write
+  // reorders from the older one are lost
+  // the insertions from the loosing side would be inserted on the winning side
+  // after their closest elements to their own timestamp respectively
+}
+
 export function mergeArray (docA, changesA, docB, changesB) {
   const docs = {
     a: docA.map(item => item.id),
@@ -125,7 +132,7 @@ export function mergeArray (docA, changesA, docB, changesB) {
     }
 
     // TODO: throw error?
-    console.warn('were not caught by any condition', id, change)
+    console.warn(id, 'was not caught by any condition', change)
 
     if (counter++ > docs.a.length + docs.b.length) {
       break
