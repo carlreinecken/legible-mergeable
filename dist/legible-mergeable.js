@@ -26,6 +26,84 @@
 
   const CHANGES_KEY = '_changes';
 
+  function getLatestDate (changes) {
+    return Object.keys(changes).reduce((acc, key) => {
+      return (acc < changes[key]) ? changes[key] : acc
+    }, null)
+  }
+
+  function getIdsMap (doc, idKey) {
+    return new Map(doc.map(item => [item[idKey], item]))
+  }
+
+  function mergeArrayIm (docA, changesA, docB, changesB) {
+    const result = { content: [], changes: {} };
+    const input = { a: {}, b: {} };
+    const ID_KEY = 'id';
+
+    // get the latest change from each doc
+    const latestDateA = getLatestDate(changesA);
+    const latestDateB = getLatestDate(changesB);
+
+    if (latestDateA > latestDateB) {
+      input.a = { doc: docA, changes: changesA, map: getIdsMap(docA, ID_KEY) };
+      input.b = { doc: docB, changes: changesB, map: getIdsMap(docB, ID_KEY) };
+    } else if (latestDateB >= latestDateA) {
+      input.a = { doc: docB, changes: changesB, map: getIdsMap(docB, ID_KEY) };
+      input.b = { doc: docA, changes: changesA, map: getIdsMap(docA, ID_KEY) };
+    }
+
+    // take the entire order from the one with the latest change
+    // reorders from the older one are lost
+    result.content = input.a.doc;
+    result.changes = input.a.changes;
+
+    // const getChangeDate = (date) => date instanceof Date ? date : null
+    const toBeInserted = [];
+    const toBeDeleted = new Set();
+
+    // loop over the loosing side and check for deletions and insertions
+    for (const changeId of Object.keys(input.b.changes)) {
+      const change = input.b.changes[changeId];
+      if (!input.a.changes[changeId] && !input.a.map.has(changeId)) {
+        // b has added id
+        toBeInserted.push(input.b.map.get(changeId));
+        result.changes[changeId] = change;
+      }
+
+      if (!input.b.map.has(changeId) && input.a.map.has(changeId)) {
+        // b has deleted id
+        toBeDeleted.add(changeId);
+        result.changes[changeId] = change;
+      }
+    }
+
+    // filter out deleted items
+    result.content = result.content.filter(item => !toBeDeleted.has(item[ID_KEY]));
+
+    // the insertions from the loosing side will be inserted on the winning side
+    // after their closest elements to their own timestamp respectively
+    for (const newElement of toBeInserted) {
+      const newElementDate = input.b.changes[newElement[ID_KEY]];
+      let closestIndex = null;
+      let closestDifference = null;
+
+      for (const [index, element] of input.a.doc.entries()) {
+        const elementDate = input.a.changes[element[ID_KEY]];
+        const difference = Math.abs(elementDate - newElementDate);
+
+        if (closestDifference == null || difference < closestDifference) {
+          closestDifference = difference;
+          closestIndex = index;
+        }
+      }
+
+      result.content.splice(closestIndex + 1, 0, newElement);
+    }
+
+    return result
+  }
+
   function mergeArray (docA, changesA, docB, changesB) {
     const docs = {
       a: docA.map(item => item.id),
@@ -151,7 +229,7 @@
       }
 
       // TODO: throw error?
-      console.warn('were not caught by any condition', id, change);
+      console.warn(id, 'was not caught by any condition', change);
 
       if (counter++ > docs.a.length + docs.b.length) {
         break
@@ -385,7 +463,7 @@
     }
 
     static mergeDumps () {
-      return { mergeArray: mergeArray, mergeObject: mergeObject }
+      return { mergeArray: mergeArray, mergeArrayIm: mergeArrayIm, mergeObject: mergeObject }
     }
   }
 
