@@ -26,9 +26,6 @@
 
   const CHANGES_KEY = '_changes';
 
-  function mergeArrayIm (docA, changesA, docB, changesB) {
-  }
-
   function mergeArray (docA, changesA, docB, changesB) {
     const docs = {
       a: docA.map(item => item.id),
@@ -388,7 +385,7 @@
     }
 
     static mergeDumps () {
-      return { mergeArray: mergeArray, mergeArrayIm: mergeArrayIm, mergeObject: mergeObject }
+      return { mergeArray: mergeArray, mergeObject: mergeObject }
     }
   }
 

@@ -1,8 +1,5 @@
 import util from './util'
 
-export function mergeArrayIm (docA, changesA, docB, changesB) {
-}
-
 export function mergeArray (docA, changesA, docB, changesB) {
   const docs = {
     a: docA.map(item => item.id),
