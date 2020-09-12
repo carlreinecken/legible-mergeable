@@ -135,8 +135,6 @@ function mergeArrayIm (docA, docB) {
     return result.pos[a[ID_KEY]] - result.pos[b[ID_KEY]]
   })
 
-  console.log('result pos', result.pos)
-
   return result
 }
 
