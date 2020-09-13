@@ -48,7 +48,7 @@ export default class MergeableObject {
    * The state without the changes, it's the "pure" document
    * @return the state
    */
-  toBase () {
+  base () {
     return util.deepCopy(this.state)
   }
 

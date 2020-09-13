@@ -12,8 +12,13 @@ function parseChangeDates (changes) {
   }, {})
 }
 
+function newDate (date) {
+  return new Date(date) || new Date()
+}
+
 export default {
   hasKey,
   deepCopy,
-  parseChangeDates
+  parseChangeDates,
+  newDate
 }

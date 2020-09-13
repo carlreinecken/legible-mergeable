@@ -6,6 +6,9 @@
 
   const POSITIONS_KEY = '^p';
   const MODIFICATIONS_KEY = '^m';
+  const ID_KEY = 'id';
+  const DEFAULT_MIN_POSITION = parseInt('0', 36);
+  const DEFAULT_MAX_POSITION = parseInt('zzz', 36);
 
   function hasKey (object, key) {
     return Object.prototype.hasOwnProperty.call(object, key)
@@ -21,10 +24,15 @@
     }, {})
   }
 
+  function newDate (date) {
+    return new Date(date) || new Date()
+  }
+
   var util = {
     hasKey,
     deepCopy,
-    parseChangeDates
+    parseChangeDates,
+    newDate
   };
 
   function merge (docA, changesA, docB, changesB) {
@@ -119,7 +127,7 @@
      * The state without the changes, it's the "pure" document
      * @return the state
      */
-    toBase () {
+    base () {
       return util.deepCopy(this.state)
     }
 
@@ -282,15 +290,20 @@
     }
 
     static create (array) {
-      let changes = {};
+      let modifications = {};
+      let positions = {};
       const state = util.deepCopy(array || []);
 
-      const changesIndex = state.findIndex(item => util.hasKey(item, MODIFICATIONS_KEY));
+      const changesIndex = state.findIndex(item => {
+        return util.hasKey(item, MODIFICATIONS_KEY) && util.hasKey(item, POSITIONS_KEY)
+      });
       if (changesIndex > 0) {
-        changes = util.parseChangeDates(state.splice(changesIndex, 1)[0][MODIFICATIONS_KEY]);
+        const metaItem = state.splice(changesIndex, 1)[0];
+        modifications = util.parseChangeDates(metaItem[MODIFICATIONS_KEY]);
+        positions = metaItem[POSITIONS_KEY];
       }
 
-      return new this(state, changes)
+      return new this(state, positions, modifications)
     }
 
     has (id) {
@@ -300,13 +313,19 @@
       if (this.has(id)) ;
     }
 
-    delete (id, date) {
+    push (element, date) {
+      this.state.push(element);
+      this.modifications[element[ID_KEY]] = util.newDate(date);
+      // this.generatePosition(index)
     }
 
     insert (element, afterId, date) {
     }
 
     replace (element, replacedId, date) {
+    }
+
+    delete (id, date) {
     }
 
     move (id, afterId, date) {
@@ -322,8 +341,15 @@
      * The state without the changes, it's the "pure" document
      * @return the state
      */
-    toBase () {
+    base () {
       return util.deepCopy(this.state)
+    }
+
+    meta () {
+      return util.deepCopy({
+        [MODIFICATIONS_KEY]: this.modifications,
+        [POSITIONS_KEY]: this.positions
+      })
     }
 
     /*
@@ -332,8 +358,8 @@
      */
     dump () {
       return [
-        ...this.state,
-        { [MODIFICATIONS_KEY]: this.changes }
+        ...this.base(),
+        this.meta()
       ]
     }
 
@@ -342,25 +368,102 @@
     }
 
     clone () {
-      return new this(
+      return new MergeableArray(
         util.deepCopy(this.state),
-        util.deepCopy(this.changes)
+        util.deepCopy(this.positions),
+        util.deepCopy(this.modifications)
       )
     }
 
     static merge (stateA, stateB) {
-      const result = merge$1(stateA.state, stateA.changes, stateB.state, stateB.changes);
-      result.content.push({ [MODIFICATIONS_KEY]: result.changes });
+      const result = merge$1({
+        val: stateA.state,
+        mod: stateA.modifications,
+        pos: stateA.positions
+      }, {
+        val: stateB.state,
+        mod: stateB.modifications,
+        pos: stateB.positions
+      });
+      result.content.push({ [MODIFICATIONS_KEY]: result.mod, [POSITIONS_KEY]: result.pos });
       return MergeableArray.create(result.content)
     }
 
     merge (stateB) {
-      const result = merge$1(this.state, this.changes, stateB.state, stateB.changes);
-      this.state = result.content;
-      this.changes = result.changes;
+      const result = MergeableArray.merge(this, stateB);
+      this.state = result.val;
+      this.modifications = result.mod;
+      this.positions = result.pos;
       return this
     }
   }
+
+  /* How Positions are generated and compared
+   *
+   * Based on CRDT LOGOOT sequence algorithm.
+   * Numbers are encoded in base36 to save character space.
+   *
+   *    // identifiers: A < B < C
+   *    { A: [1], B: [1, 5], C: [2] }
+   *
+   *    // identifiers with a random "unique" number encoded in base36
+   *    { A: ['a4'], B: ['a4'], ['n1'], C: ['a5'] }
+   */
+
+  const encodeBase36 = (number) => number.toString(36);
+  const decodeBase36 = (string) => parseInt(string, 36);
+  const decodeBase36Array = (list) => list.map(value => decodeBase36(value));
+
+  function randomIntBetween (min, max) {
+    return Math.floor(Math.random() * (max - (min + 1))) + min + 1
+  }
+
+  function generate (prevPos, nextPos) {
+    // should not use 000 or zzz
+    console.log(prevPos, nextPos);
+    console.log(DEFAULT_MIN_POSITION, DEFAULT_MAX_POSITION, encodeBase36);
+
+    // 543, 333
+    const prevPosHead = prevPos[0];
+    const nextPosHead = nextPos[0];
+
+    const diff = Math.abs(prevPosHead - nextPosHead);
+    const third = Math.floor(diff * 0.3);
+    const result = randomIntBetween(prevPosHead + third, nextPosHead - third);
+
+    console.log(diff, third, result);
+  }
+
+  function generatePosition (prevPos, nextPos) {
+    const prevPosInt = decodeBase36Array(prevPos);
+    const nextPosInt = decodeBase36Array(nextPos);
+
+    generate(prevPosInt, nextPosInt);
+  }
+
+  function comparePositions (a, b) {
+    compare(decodeBase36Array(a), decodeBase36Array(b));
+  }
+
+  function compare (a, b) {
+    const next = x => x.length > 1 ? x.slice(1) : ['0'];
+    const diff = a - b;
+
+    if (diff === 0 && (a.length > 1 || b.length > 1)) {
+      return comparePositions(next(a), next(b))
+    } else if (diff > 0) {
+      return 1
+    } else if (diff < 0) {
+      return -1
+    }
+
+    return 0
+  }
+
+  var positionFunctions = {
+    generatePosition,
+    comparePositions
+  };
 
   var index = {
     Array (payload) {
@@ -381,6 +484,10 @@
 
     get _mergeFunction () {
       return { mergeArray: merge$1, mergeObject: merge }
+    },
+
+    get _positionFunction () {
+      return positionFunctions
     },
 
     get KEY () {

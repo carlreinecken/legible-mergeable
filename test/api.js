@@ -1,6 +1,7 @@
 const legibleMergeable = require('../dist/legible-mergeable.js')
 const expect = require('chai').expect
-const CHANGES_KEY = legibleMergeable.KEY.MODIFICATIONS
+const MODIFICATIONS_KEY = legibleMergeable.KEY.MODIFICATIONS
+const POSITIONS_KEY = legibleMergeable.KEY.POSITIONS
 
 /* eslint-disable no-unused-expressions */
 
@@ -14,21 +15,29 @@ describe('create', function () {
 
     const item = legibleMergeable.Object(base)
 
-    expect(item.toBase()).to.eql(base)
+    expect(item.base()).to.eql(base)
     expect(item.dump()).to.eql({
       ...base,
-      [CHANGES_KEY]: {}
+      [MODIFICATIONS_KEY]: {}
     })
   })
 
-  it('a mergeable array', function () {
-    // const list = legibleMergeable.Array()
+  xit('a mergeable array (position objects)', function () {
+    const date = new Date('2020-09-13').toISOString()
+    const list = legibleMergeable.Array()
+    const item = {
+      id: 1,
+      name: 'Hazelnutmilk',
+      purchased: false
+    }
 
-    // expect(item.toBase()).to.eql(base)
-    // expect(item.dump()).to.eql({
-    //   ...base,
-    //   [CHANGES_KEY]: {}
-    // })
+    list.push(item, date)
+
+    expect(list.base()).to.eql([item])
+    console.log(list.meta(), POSITIONS_KEY)
+    const meta = list.meta()
+    expect(meta[MODIFICATIONS_KEY]).to.eql({ [item.id]: date })
+    expect(meta[POSITIONS_KEY][item.id]).to.not.be.undefined
   })
 
   it('a mergeable object with changes', function () {
@@ -36,7 +45,7 @@ describe('create', function () {
       id: 1,
       name: 'Oatmilk',
       price: 140,
-      [CHANGES_KEY]: {
+      [MODIFICATIONS_KEY]: {
         price: new Date('2020-08-26')
       }
     }
@@ -44,8 +53,8 @@ describe('create', function () {
     const item = legibleMergeable.Object(original)
     expect(item.dump()).to.eql(original)
 
-    delete original[CHANGES_KEY]
-    expect(item.toBase()).to.eql(original)
+    delete original[MODIFICATIONS_KEY]
+    expect(item.base()).to.eql(original)
   })
 })
 
@@ -62,8 +71,8 @@ describe('manipulate', function () {
     item.set('isOpen', false, date)
 
     const dump = item.dump()
-    const changes = dump[CHANGES_KEY]
-    delete dump[CHANGES_KEY]
+    const changes = dump[MODIFICATIONS_KEY]
+    delete dump[MODIFICATIONS_KEY]
 
     const expected = {
       id: 1,
@@ -86,7 +95,7 @@ describe('manipulate', function () {
       name: 'Oatmilk',
       price: 240,
       isOpen: true,
-      [CHANGES_KEY]: {
+      [MODIFICATIONS_KEY]: {
         name: new Date('2020-08-03'),
         isOpen: new Date('2020-08-05'),
         price: new Date('2020-09-01')
@@ -103,8 +112,8 @@ describe('manipulate', function () {
     }
 
     const dump = item.dump()
-    const changes = dump[CHANGES_KEY]
-    delete dump[CHANGES_KEY]
+    const changes = dump[MODIFICATIONS_KEY]
+    delete dump[MODIFICATIONS_KEY]
 
     const expected = {
       id: 1,
@@ -129,7 +138,7 @@ describe('merge', function () {
       price: 120,
       isCold: true,
       isOpen: false,
-      [CHANGES_KEY]: {
+      [MODIFICATIONS_KEY]: {
         name: '2020-08-03',
         isCold: '2020-08-05'
       }
@@ -145,8 +154,8 @@ describe('merge', function () {
     const replicaC2 = replicaB.merge(replicaA)
 
     const dump = replicaC1.dump()
-    const changes = dump[CHANGES_KEY]
-    delete dump[CHANGES_KEY]
+    const changes = dump[MODIFICATIONS_KEY]
+    delete dump[MODIFICATIONS_KEY]
 
     const expected = {
       name: 'Almondmilk',
