@@ -108,7 +108,10 @@ export default function merge (docA, docB) {
     }
   }
 
-  result.val.sort((a, b) => result.pos[a[ID_KEY]] - result.pos[b[ID_KEY]])
+  result.val.sort((a, b) => {
+    return result.pos[a[ID_KEY]] - result.pos[b[ID_KEY]]
+    // TODO: if not same id and substraction is 0, then compare mod dates
+  })
 
   return result
 }

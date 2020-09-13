@@ -1,5 +1,6 @@
 const legibleMergeable = require('../dist/legible-mergeable.js')
 const expect = require('chai').expect
+const CHANGES_KEY = legibleMergeable.KEY.MODIFICATIONS
 
 /* eslint-disable no-unused-expressions */
 
@@ -11,13 +12,23 @@ describe('create', function () {
       price: 140
     }
 
-    const item = legibleMergeable.create(base)
+    const item = legibleMergeable.Object(base)
 
     expect(item.toBase()).to.eql(base)
     expect(item.dump()).to.eql({
       ...base,
-      _changes: {}
+      [CHANGES_KEY]: {}
     })
+  })
+
+  it('a mergeable array', function () {
+    // const list = legibleMergeable.Array()
+
+    // expect(item.toBase()).to.eql(base)
+    // expect(item.dump()).to.eql({
+    //   ...base,
+    //   [CHANGES_KEY]: {}
+    // })
   })
 
   it('a mergeable object with changes', function () {
@@ -25,15 +36,15 @@ describe('create', function () {
       id: 1,
       name: 'Oatmilk',
       price: 140,
-      _changes: {
+      [CHANGES_KEY]: {
         price: new Date('2020-08-26')
       }
     }
 
-    const item = legibleMergeable.create(original)
+    const item = legibleMergeable.Object(original)
     expect(item.dump()).to.eql(original)
 
-    delete original._changes
+    delete original[CHANGES_KEY]
     expect(item.toBase()).to.eql(original)
   })
 })
@@ -41,7 +52,7 @@ describe('create', function () {
 describe('manipulate', function () {
   it('a mergeable object', function () {
     const date = new Date()
-    const item = legibleMergeable.create({
+    const item = legibleMergeable.Object({
       id: 1,
       name: 'Oatmilk',
       price: 140
@@ -50,7 +61,10 @@ describe('manipulate', function () {
     item.set('price', 135, date)
     item.set('isOpen', false, date)
 
-    const { _changes, ...dump } = item.dump()
+    const dump = item.dump()
+    const changes = dump[CHANGES_KEY]
+    delete dump[CHANGES_KEY]
+
     const expected = {
       id: 1,
       name: 'Oatmilk',
@@ -59,10 +73,10 @@ describe('manipulate', function () {
     }
 
     expect(dump).to.eql(expected)
-    expect(_changes.isOpen.getTime()).to.equal(date.getTime())
-    expect(_changes.price.getTime()).to.equal(date.getTime())
-    expect(_changes.name).to.be.undefined
-    expect(_changes.id).to.be.undefined
+    expect(changes.isOpen.getTime()).to.equal(date.getTime())
+    expect(changes.price.getTime()).to.equal(date.getTime())
+    expect(changes.name).to.be.undefined
+    expect(changes.id).to.be.undefined
   })
 
   it('a mergeable object with changes', function () {
@@ -72,13 +86,13 @@ describe('manipulate', function () {
       name: 'Oatmilk',
       price: 240,
       isOpen: true,
-      _changes: {
+      [CHANGES_KEY]: {
         name: new Date('2020-08-03'),
         isOpen: new Date('2020-08-05'),
         price: new Date('2020-09-01')
       }
     }
-    const item = legibleMergeable.create(original)
+    const item = legibleMergeable.Object(original)
 
     if (item.get('price') > 200) {
       item.set('name', 'Almondmilk', date)
@@ -88,7 +102,10 @@ describe('manipulate', function () {
       item.set('isCold', true, date)
     }
 
-    const { _changes, ...dump } = item.dump()
+    const dump = item.dump()
+    const changes = dump[CHANGES_KEY]
+    delete dump[CHANGES_KEY]
+
     const expected = {
       id: 1,
       name: 'Almondmilk',
@@ -97,22 +114,22 @@ describe('manipulate', function () {
     }
 
     expect(dump).to.eql(expected)
-    expect(_changes.name.getTime()).to.equal(date.getTime())
-    expect(_changes.isCold.getTime()).to.equal(date.getTime())
-    expect(_changes.isOpen.getTime()).to.equal(date.getTime())
-    expect(_changes.price.getTime()).to.equal((new Date('2020-09-01').getTime()))
-    expect(_changes.id).to.be.undefined
+    expect(changes.name.getTime()).to.equal(date.getTime())
+    expect(changes.isCold.getTime()).to.equal(date.getTime())
+    expect(changes.isOpen.getTime()).to.equal(date.getTime())
+    expect(changes.price.getTime()).to.equal((new Date('2020-09-01').getTime()))
+    expect(changes.id).to.be.undefined
   })
 })
 
 describe('merge', function () {
   it('a cloned and changed object', function () {
-    const replicaA = legibleMergeable.create({
+    const replicaA = legibleMergeable.Object({
       name: 'Oatmilk',
       price: 120,
       isCold: true,
       isOpen: false,
-      _changes: {
+      [CHANGES_KEY]: {
         name: '2020-08-03',
         isCold: '2020-08-05'
       }
@@ -127,7 +144,10 @@ describe('merge', function () {
     const replicaC1 = legibleMergeable.merge(replicaA, replicaB)
     const replicaC2 = replicaB.merge(replicaA)
 
-    const { _changes, ...dump } = replicaC1.dump()
+    const dump = replicaC1.dump()
+    const changes = dump[CHANGES_KEY]
+    delete dump[CHANGES_KEY]
+
     const expected = {
       name: 'Almondmilk',
       isCold: true,
@@ -138,9 +158,9 @@ describe('merge', function () {
     expect(dump).to.eql(expected)
     expect(replicaA.size()).to.equal(4)
     expect(replicaB.size()).to.equal(3)
-    expect(_changes.name.getTime()).to.equal(date.getTime())
-    expect(_changes.price.getTime()).to.equal(date.getTime())
-    expect(_changes.isCold.getTime()).to.equal((new Date('2020-08-05')).getTime())
-    expect(_changes.isOpen).to.be.undefined
+    expect(changes.name.getTime()).to.equal(date.getTime())
+    expect(changes.price.getTime()).to.equal(date.getTime())
+    expect(changes.isCold.getTime()).to.equal((new Date('2020-08-05')).getTime())
+    expect(changes.isOpen).to.be.undefined
   })
 })

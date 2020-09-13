@@ -1,1 +1,2 @@
-export const CHANGES_KEY = '_changes'
+export const POSITIONS_KEY = '^p'
+export const MODIFICATIONS_KEY = '^m'
