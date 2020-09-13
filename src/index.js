@@ -1,6 +1,7 @@
 import util from './util'
 import { CHANGES_KEY } from './constants'
-import { mergeArray, mergeObject } from './merge'
+import mergeArray from './merge-array'
+import mergeObject from './merge-object'
 
 const TYPES = {
   OBJECT: 'OBJECT',
@@ -149,7 +150,7 @@ export default class legibleMergeable {
     }
   }
 
-  static mergeDumps () {
+  static _mergeDumps () {
     return { mergeArray: mergeArray, mergeObject: mergeObject }
   }
 }

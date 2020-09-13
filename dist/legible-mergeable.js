@@ -26,172 +26,120 @@
 
   const CHANGES_KEY = '_changes';
 
-  function mergeArray (docA, changesA, docB, changesB) {
-    const docs = {
-      a: docA.map(item => item.id),
-      b: docB.map(item => item.id)
+  function getModifications (a, b) {
+    const result = {
+      inserted: {},
+      deleted: {},
+      moved: {}
     };
-    const changes = { a: changesA, b: changesB };
 
-    const resultIds = [];
-    let counter = 0;
-
-    const hasNext = (side) => docs[side][0] != null;
-    // TODO: check if shift makes perfomance O(n^2) otherwise use index counter instead
-    const shift = (side) => docs[side].shift();
-    const shiftBoth = () => {
-      shift('a');
-      return shift('b')
-    };
-    const getChange = (side, id) => changes[side][id]
-      ? new Date(changes[side][id])
-      : null;
-
-    while (hasNext('a') || hasNext('b')) {
-      const id = { a: docs.a[0], b: docs.b[0] };
-      const change = {
-        a: { a: getChange('a', id.a), b: getChange('a', id.b) },
-        b: { a: getChange('b', id.a), b: getChange('b', id.b) }
-      };
-
-      const win = (side, origin) => {
-        // console.log(id.a, id.b, side, origin)
-        resultIds.push(shift(side));
-      };
-      // console.log(id.a, id.b, '...')
-
-      if (id.a === id.b && (change.a.a || new Date()).getTime() ===
-        (change.b.b || new Date()).getTime()) {
-        // console.log(id.a, id.b, 'both')
-        resultIds.push(shiftBoth()); continue
+    for (const [id, change] of Object.entries(a.changes)) {
+      if (!util.hasKey(b.changes, id) && !b.values.has(id) && a.values.has(id)) {
+        result.inserted[id] = {
+          val: a.values.get(id),
+          pos: a.positions[id],
+          mod: change
+        };
+        continue
       }
 
-      if (resultIds.includes(id.a)) {
-        shift('a'); continue
+      // abort if the other lists has a newer change
+      if (change < (b.changes[id] || null)) {
+        continue
       }
 
-      if (resultIds.includes(id.b)) {
-        shift('b'); continue
+      if (!a.values.has(id)) {
+        result.deleted[id] = change;
+        continue
       }
 
-      if (change.a.a && !change.b.a && !docs.b.includes(id.a)) {
-        // a has an addition
-        if (change.b.b && !change.a.b && !docs.b.includes(id.b)) {
-          // both have an addition
-          if (change.a.a > change.b.b) {
-            // b is younger
-            win('b'); continue
-          } else if (change.a.a < change.b.b) {
-            // a is younger
-            win('a'); continue
-          }
-        } else {
-          // only a has an addition
-          win('a'); continue
-        }
-      }
-
-      if (change.b.b && !change.a.b && !docs.a.includes(id.b)) {
-        // b has an addition
-        if (change.a.a && !change.b.a && !docs.b.includes(id.a)) {
-          // both have an addition
-          if (change.b.b > change.a.a) {
-            // a is younger
-            win('a'); continue
-          } else if (change.b.b < change.a.a) {
-            // b is younger
-            win('b'); continue
-          }
-        } else {
-          // only b has an addition
-          win('b'); continue
-        }
-      }
-
-      // TODO: check if perfomance is better with a map instead of includes
-      if (change.b.a && change.a.a < change.b.a && !docs.b.includes(id.a)) {
-        // A was deleted
-        shift('a'); continue
-      }
-
-      if (change.a.b && change.b.b < change.a.b && !docs.a.includes(id.b)) {
-        // B was deleted
-        shift('b'); continue
-      }
-
-      // TODO: rewrite comments to variables
-      if (change.a.b > change.b.b) {
-        // in list A item B was moved
-        if (change.b.a > change.a.a) {
-          // conflict: in list A item A was moved
-          shiftBoth(); continue
-        }
-        win('a'); continue
-      } else if (change.a.b < change.b.b) {
-        // in list B item B was moved
-        if (change.b.a < change.a.a) {
-          // conflict: in list A item A was moved
-          shiftBoth(); continue
-        }
-        win('b'); continue
-      } else if (change.b.a > change.a.a) {
-        // in list B item B was moved
-        if (change.a.b > change.b.b) {
-          // conflict: in list A item B was moved
-          shiftBoth(); continue
-        }
-        win('b'); continue
-      } else if (change.b.a < change.a.a) {
-        // in list A item A was moved
-        if (change.a.b < change.b.b) {
-          // conflict: in list B item A was moved
-          shiftBoth(); continue
-        }
-        win('a'); continue
-      }
-
-      // TODO: throw error?
-      console.warn(id, 'was not caught by any condition', change);
-
-      if (counter++ > docs.a.length + docs.b.length) {
-        break
+      if (a.values.has(id) &&
+        b.values.has(id) &&
+        a.positions[id] !== b.positions[id]
+      ) {
+        result.moved[id] = {
+          val: a.values.get(id),
+          pos: a.positions[id],
+          mod: change
+        };
       }
     }
 
-    // TODO: merge duplicate objects
-    const result = resultIds.map(id => {
-      const entry = docA.find(item => item.id === id);
-      return (entry == null) ? docB.find(item => item.id === id) : entry
-    });
-
-    const allIds = docA.concat(
-      docB,
-      Object.keys(changes.a),
-      Object.keys(changes.b)
-    ).map(item => {
-      if (typeof item === 'object' && item.id) {
-        return item.id
-      } else if (typeof item === 'string') {
-        return item
-      }
-    });
-
-    const resultChanges = allIds.reduce((obj, id) => {
-      const previousChange = getChange('a', id) > getChange('b', id)
-        ? changes.a[id]
-        : changes.b[id];
-
-      if (previousChange == null) {
-        return obj
-      }
-
-      return { ...obj, [id]: new Date(previousChange) }
-    }, {});
-
-    return { content: result, changes: resultChanges }
+    return result
   }
 
-  function mergeObject (docA, changesA, docB, changesB) {
+  function getAllModifications (a, b) {
+    const modA = getModifications(a, b);
+    const modB = getModifications(b, a);
+
+    return {
+      inserted: { ...modA.inserted, ...modB.inserted },
+      deleted: { ...modA.deleted, ...modB.deleted },
+      moved: { ...modA.moved, ...modB.moved }
+    }
+  }
+
+  function getIdsMap (doc, idKey) {
+    return new Map(doc.map(item => [item[idKey], item]))
+  }
+
+  function merge (docA, docB) {
+    const ID_KEY = 'id';
+    const result = { val: [], mod: {}, pos: {} };
+    const input = {
+      a: { positions: docA.pos, changes: docA.mod, values: getIdsMap(docA.val, ID_KEY) },
+      b: { positions: docB.pos, changes: docB.mod, values: getIdsMap(docB.val, ID_KEY) }
+    };
+
+    const modifications = getAllModifications(input.a, input.b);
+    // console.log(modifications)
+
+    const ids = [...new Set([].concat(
+      Array.from(input.a.values.keys()),
+      Array.from(input.b.values.keys()),
+      Object.keys(input.a.changes),
+      Object.keys(input.b.changes)
+    ))];
+    // console.log(ids)
+
+    for (const id of ids) {
+      if (util.hasKey(modifications.deleted, id)) {
+        result.mod[id] = modifications.deleted[id];
+        continue
+      }
+
+      if (util.hasKey(modifications.inserted, id)) {
+        result.val.push(modifications.inserted[id].val);
+        result.pos[id] = modifications.inserted[id].pos;
+        result.mod[id] = modifications.inserted[id].mod;
+        continue
+      }
+
+      if (util.hasKey(modifications.moved, id)) {
+        result.val.push(modifications.moved[id].val);
+        result.pos[id] = modifications.moved[id].pos;
+        result.mod[id] = modifications.moved[id].mod;
+        continue
+      }
+
+      let source;
+      if (input.a.values.has(id)) source = 'a';
+      if (input.b.values.has(id)) source = 'b';
+      if (!source) continue
+
+      result.val.push(input[source].values.get(id));
+      result.pos[id] = input[source].positions[id];
+      if (util.hasKey(input[source].changes, id)) {
+        result.mod[id] = input[source].changes[id];
+      }
+    }
+
+    result.val.sort((a, b) => result.pos[a[ID_KEY]] - result.pos[b[ID_KEY]]);
+
+    return result
+  }
+
+  function merge$1 (docA, changesA, docB, changesB) {
     const changes = { a: changesA, b: changesB };
     const resultChanges = {};
     const result = {};
@@ -358,11 +306,11 @@
 
     static merge (stateA, stateB) {
       if (stateA.isArray() && stateB.isArray()) {
-        const result = mergeArray(stateA.state, stateA.changes, stateB.state, stateB.changes);
+        const result = merge(stateA.state, stateA.changes, stateB.state, stateB.changes);
         result.content.push({ [CHANGES_KEY]: result.changes });
         return legibleMergeable.create(result.content)
       } else if (stateA.isObject() && stateB.isObject()) {
-        const result = mergeObject(stateA.state, stateA.changes, stateB.state, stateB.changes);
+        const result = merge$1(stateA.state, stateA.changes, stateB.state, stateB.changes);
         return legibleMergeable.create({
           ...result.content,
           [CHANGES_KEY]: result.changes
@@ -372,20 +320,20 @@
 
     merge (stateB) {
       if (this.isArray() && stateB.isArray()) {
-        const result = mergeArray(this.state, this.changes, stateB.state, stateB.changes);
+        const result = merge(this.state, this.changes, stateB.state, stateB.changes);
         this.state = result.content;
         this.changes = result.changes;
         return this
       } else if (this.isObject() && stateB.isObject()) {
-        const result = mergeObject(this.state, this.changes, stateB.state, stateB.changes);
+        const result = merge$1(this.state, this.changes, stateB.state, stateB.changes);
         this.state = result.content;
         this.changes = result.changes;
         return this
       }
     }
 
-    static mergeDumps () {
-      return { mergeArray: mergeArray, mergeObject: mergeObject }
+    static _mergeDumps () {
+      return { mergeArray: merge, mergeObject: merge$1 }
     }
   }
 
