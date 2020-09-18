@@ -47,16 +47,16 @@ export function generatePosition (prevPos, nextPos) {
   generate(prevPosInt, nextPosInt)
 }
 
-export function comparePositions (a, b) {
-  compare(decodeBase36Array(a), decodeBase36Array(b))
+function comparePositions (a, b) {
+  return compare(decodeBase36Array(a), decodeBase36Array(b))
 }
 
 function compare (a, b) {
-  const next = x => x.length > 1 ? x.slice(1) : ['0']
-  const diff = a - b
+  const next = x => x.length > 1 ? x.slice(1) : [DEFAULT_MIN_POSITION]
+  const diff = a[0] - b[0]
 
   if (diff === 0 && (a.length > 1 || b.length > 1)) {
-    return comparePositions(next(a), next(b))
+    return compare(next(a), next(b))
   } else if (diff > 0) {
     return 1
   } else if (diff < 0) {

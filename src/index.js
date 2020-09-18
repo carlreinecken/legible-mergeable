@@ -26,7 +26,7 @@ export default {
     return { mergeArray, mergeObject }
   },
 
-  get _positionFunction () {
+  get _positionFunctions () {
     return positionFunctions
   },
 

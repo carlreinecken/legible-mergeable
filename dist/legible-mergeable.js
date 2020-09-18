@@ -8,7 +8,10 @@
   const MODIFICATIONS_KEY = '^m';
   const ID_KEY = 'id';
   const DEFAULT_MIN_POSITION = parseInt('0', 36);
+  // in base10 -> 46655
   const DEFAULT_MAX_POSITION = parseInt('zzz', 36);
+  // should be divideable by three
+  const THRESHOLD_NEW_POSITION_DEPTH = 3 * 3;
 
   function hasKey (object, key) {
     return Object.prototype.hasOwnProperty.call(object, key)
@@ -414,8 +417,15 @@
   const decodeBase36 = (string) => parseInt(string, 36);
   const decodeBase36Array = (list) => list.map(value => decodeBase36(value));
 
-  function randomIntBetween (min, max) {
-    return Math.floor(Math.random() * (max - (min + 1))) + min + 1
+  // function randomIntBetween (min, max) {
+  //   return Math.floor(Math.random() * (max - (min + 1))) + min + 1
+  // }
+
+  function randomIntInMiddleThirdBetween (min, max) {
+    const diff = Math.abs(min - max);
+    const third = Math.floor(diff * 0.3);
+    min = min + third;
+    return Math.floor(Math.random() * ((max - third) - (min + 1))) + min + 1
   }
 
   function generate (prevPos, nextPos) {
@@ -423,15 +433,18 @@
     console.log(prevPos, nextPos);
     console.log(DEFAULT_MIN_POSITION, DEFAULT_MAX_POSITION, encodeBase36);
 
-    // 543, 333
+    // 333, 543
     const prevPosHead = prevPos[0];
     const nextPosHead = nextPos[0];
 
     const diff = Math.abs(prevPosHead - nextPosHead);
-    const third = Math.floor(diff * 0.3);
-    const result = randomIntBetween(prevPosHead + third, nextPosHead - third);
 
-    console.log(diff, third, result);
+    if (diff < THRESHOLD_NEW_POSITION_DEPTH) {
+      // add a second identifier
+      return [prevPosHead, randomIntInMiddleThirdBetween(DEFAULT_MIN_POSITION, DEFAULT_MAX_POSITION)]
+    }
+
+    return randomIntInMiddleThirdBetween(prevPosHead, nextPosHead)
   }
 
   function generatePosition (prevPos, nextPos) {
@@ -442,15 +455,15 @@
   }
 
   function comparePositions (a, b) {
-    compare(decodeBase36Array(a), decodeBase36Array(b));
+    return compare(decodeBase36Array(a), decodeBase36Array(b))
   }
 
   function compare (a, b) {
-    const next = x => x.length > 1 ? x.slice(1) : ['0'];
-    const diff = a - b;
+    const next = x => x.length > 1 ? x.slice(1) : [DEFAULT_MIN_POSITION];
+    const diff = a[0] - b[0];
 
     if (diff === 0 && (a.length > 1 || b.length > 1)) {
-      return comparePositions(next(a), next(b))
+      return compare(next(a), next(b))
     } else if (diff > 0) {
       return 1
     } else if (diff < 0) {
@@ -486,7 +499,7 @@
       return { mergeArray: merge$1, mergeObject: merge }
     },
 
-    get _positionFunction () {
+    get _positionFunctions () {
       return positionFunctions
     },
 

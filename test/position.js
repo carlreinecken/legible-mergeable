@@ -1,6 +1,6 @@
 const expect = require('chai').expect
-const generate = require('../dist/legible-mergeable.js')._positionFunction.generatePosition
-const compare = require('../dist/legible-mergeable.js')._positionFunction.comparePositions
+const generate = require('../dist/legible-mergeable.js')._positionFunctions.generatePosition
+const compare = require('../dist/legible-mergeable.js')._positionFunctions.comparePositions
 
 describe('position', function () {
   it('generate', function () {
