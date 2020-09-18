@@ -1,4 +1,9 @@
-import { DEFAULT_MAX_POSITION, DEFAULT_MIN_POSITION } from './constants'
+import {
+  DEFAULT_MAX_POSITION,
+  DEFAULT_MIN_POSITION,
+  THRESHOLD_NEW_POSITION_DEPTH
+} from './constants'
+import LegibleMergeableError from './LegibleMergeableError'
 
 /* How Positions are generated and compared
  *
@@ -15,36 +20,48 @@ import { DEFAULT_MAX_POSITION, DEFAULT_MIN_POSITION } from './constants'
 const encodeBase36 = (number) => number.toString(36)
 const decodeBase36 = (string) => parseInt(string, 36)
 const decodeBase36Array = (list) => list.map(value => decodeBase36(value))
+const encodeBase36Array = (list) => list.map(value => encodeBase36(value))
 
-function randomIntBetween (min, max) {
-  return Math.floor(Math.random() * (max - (min + 1))) + min + 1
+// function randomIntBetween (min, max) {
+//   return Math.floor(Math.random() * (max - (min + 1))) + min + 1
+// }
+
+function randomIntInMiddleThirdBetween (min, max) {
+  const diff = Math.abs(min - max)
+  const third = Math.floor(diff * 0.3)
+  min = min + third
+  const result = Math.floor(Math.random() * ((max - third) - (min + 1))) + min + 1
+  return result
 }
 
 function generate (prevPos, nextPos) {
-  // should not use 000 or zzz
-  console.log(prevPos, nextPos)
-  console.log(DEFAULT_MIN_POSITION, DEFAULT_MAX_POSITION, encodeBase36)
+  console.log('generate()', prevPos, nextPos)
 
-  // 333, 543
+  if (compare(prevPos, nextPos) === 0) {
+    throw new LegibleMergeableError('Could not generate new position, no space available.')
+  }
+
   const prevPosHead = prevPos[0]
   const nextPosHead = nextPos[0]
 
   const diff = Math.abs(prevPosHead - nextPosHead)
-  const third = Math.floor(diff * 0.3)
-  const result = randomIntBetween(prevPosHead + third, nextPosHead - third)
+  const newPos = [prevPosHead]
 
-  // while () {
-  //   if (diff < 300) {
-  //     // add a second identifier
-  //   }
-  // }
+  if (diff < THRESHOLD_NEW_POSITION_DEPTH) {
+    newPos.push(randomIntInMiddleThirdBetween(DEFAULT_MIN_POSITION, DEFAULT_MAX_POSITION))
+  } else {
+    newPos[0] = randomIntInMiddleThirdBetween(prevPosHead, nextPosHead)
+  }
+
+  return encodeBase36Array(newPos)
 }
 
-export function generatePosition (prevPos, nextPos) {
+function generatePosition (prevPos, nextPos) {
+  console.log(prevPos, nextPos)
   const prevPosInt = decodeBase36Array(prevPos)
   const nextPosInt = decodeBase36Array(nextPos)
 
-  generate(prevPosInt, nextPosInt)
+  return generate(prevPosInt, nextPosInt)
 }
 
 function comparePositions (a, b) {

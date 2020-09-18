@@ -401,6 +401,13 @@
     }
   }
 
+  class LegibleMergeableError extends Error {
+    constructor (message) {
+      super(message);
+      this.name = 'LegibleMergeableError';
+    }
+  }
+
   /* How Positions are generated and compared
    *
    * Based on CRDT LOGOOT sequence algorithm.
@@ -416,6 +423,7 @@
   const encodeBase36 = (number) => number.toString(36);
   const decodeBase36 = (string) => parseInt(string, 36);
   const decodeBase36Array = (list) => list.map(value => decodeBase36(value));
+  const encodeBase36Array = (list) => list.map(value => encodeBase36(value));
 
   // function randomIntBetween (min, max) {
   //   return Math.floor(Math.random() * (max - (min + 1))) + min + 1
@@ -425,33 +433,38 @@
     const diff = Math.abs(min - max);
     const third = Math.floor(diff * 0.3);
     min = min + third;
-    return Math.floor(Math.random() * ((max - third) - (min + 1))) + min + 1
+    const result = Math.floor(Math.random() * ((max - third) - (min + 1))) + min + 1;
+    return result
   }
 
   function generate (prevPos, nextPos) {
-    // should not use 000 or zzz
-    console.log(prevPos, nextPos);
-    console.log(DEFAULT_MIN_POSITION, DEFAULT_MAX_POSITION, encodeBase36);
+    console.log('generate()', prevPos, nextPos);
 
-    // 333, 543
+    if (compare(prevPos, nextPos) === 0) {
+      throw new LegibleMergeableError('Could not generate new position, no space available.')
+    }
+
     const prevPosHead = prevPos[0];
     const nextPosHead = nextPos[0];
 
     const diff = Math.abs(prevPosHead - nextPosHead);
+    const newPos = [prevPosHead];
 
     if (diff < THRESHOLD_NEW_POSITION_DEPTH) {
-      // add a second identifier
-      return [prevPosHead, randomIntInMiddleThirdBetween(DEFAULT_MIN_POSITION, DEFAULT_MAX_POSITION)]
+      newPos.push(randomIntInMiddleThirdBetween(DEFAULT_MIN_POSITION, DEFAULT_MAX_POSITION));
+    } else {
+      newPos[0] = randomIntInMiddleThirdBetween(prevPosHead, nextPosHead);
     }
 
-    return randomIntInMiddleThirdBetween(prevPosHead, nextPosHead)
+    return encodeBase36Array(newPos)
   }
 
   function generatePosition (prevPos, nextPos) {
+    console.log(prevPos, nextPos);
     const prevPosInt = decodeBase36Array(prevPos);
     const nextPosInt = decodeBase36Array(nextPos);
 
-    generate(prevPosInt, nextPosInt);
+    return generate(prevPosInt, nextPosInt)
   }
 
   function comparePositions (a, b) {
