@@ -15,7 +15,7 @@ function p (expected) {
   }
 }
 
-xdescribe('merge arrays', function () {
+describe('merge arrays', function () {
   it('first generic test', function () {
     const replicaA = p({
       // ~A1, +S4, -55

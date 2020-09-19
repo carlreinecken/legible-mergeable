@@ -22,17 +22,22 @@ const decodeBase36 = (string) => parseInt(string, 36)
 const decodeBase36Array = (list) => list.map(value => decodeBase36(value))
 const encodeBase36Array = (list) => list.map(value => encodeBase36(value))
 
-function randomIntInMiddleThirdBetween (min, max) {
-  const diff = Math.abs(min - max)
+function randomIntFromMiddleThird (min, max) {
+  if (min > max) {
+    const temp = min
+    min = max
+    max = temp
+  }
+
+  const diff = max - min
   const third = Math.floor(diff * 0.3)
   min = min + third
-  const result = Math.floor(Math.random() * ((max - third) - (min + 1))) + min + 1
-  return result
+  max = max - third
+
+  return Math.floor(Math.random() * (max - (min + 1))) + min + 1
 }
 
 function generate (prevPos, nextPos) {
-  console.log('generate()', prevPos, nextPos)
-
   if (prevPos.length > 0 && nextPos.length > 0 && compare(prevPos, nextPos) === 0) {
     throw new LegibleMergeableError('Could not generate new position, no space available.')
   }
@@ -46,17 +51,15 @@ function generate (prevPos, nextPos) {
   if (diff < THRESHOLD_NEW_POSITION_DEPTH) {
     newPos = newPos.concat(generate(prevPos.slice(1), nextPos.slice(1)))
   } else {
-    newPos[0] = randomIntInMiddleThirdBetween(prevPosHead, nextPosHead)
+    newPos[0] = randomIntFromMiddleThird(prevPosHead, nextPosHead)
   }
 
   return newPos
 }
 
 function generatePosition (prevPos, nextPos) {
-  console.log(prevPos, nextPos)
   const prevPosInt = decodeBase36Array(prevPos)
   const nextPosInt = decodeBase36Array(nextPos)
-
   return encodeBase36Array(generate(prevPosInt, nextPosInt))
 }
 

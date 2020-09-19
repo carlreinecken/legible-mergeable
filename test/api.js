@@ -5,7 +5,7 @@ const POSITIONS_KEY = legibleMergeable.KEY.POSITIONS
 
 /* eslint-disable no-unused-expressions */
 
-xdescribe('create', function () {
+describe('create', function () {
   it('a mergeable object', function () {
     const base = {
       id: 1,
@@ -58,7 +58,7 @@ xdescribe('create', function () {
   })
 })
 
-xdescribe('manipulate', function () {
+describe('manipulate', function () {
   it('a mergeable object', function () {
     const date = new Date()
     const item = legibleMergeable.Object({
@@ -131,7 +131,7 @@ xdescribe('manipulate', function () {
   })
 })
 
-xdescribe('merge', function () {
+describe('merge', function () {
   it('a cloned and changed object', function () {
     const replicaA = legibleMergeable.Object({
       name: 'Oatmilk',

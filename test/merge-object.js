@@ -21,7 +21,7 @@ function parseChangeDates (changes) {
   }, {})
 }
 
-xdescribe('merge objects', function () {
+describe('merge objects', function () {
   it('two with changed properties', function () {
     const docA = {
       name: 'gustav',
