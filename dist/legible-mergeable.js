@@ -440,23 +440,25 @@
   function generate (prevPos, nextPos) {
     console.log('generate()', prevPos, nextPos);
 
-    if (compare(prevPos, nextPos) === 0) {
+    if (prevPos.length > 0 && nextPos.length > 0 && compare(prevPos, nextPos) === 0) {
       throw new LegibleMergeableError('Could not generate new position, no space available.')
     }
 
-    const prevPosHead = prevPos[0];
-    const nextPosHead = nextPos[0];
+    // 4-1 4-2
+    const prevPosHead = prevPos[0] || DEFAULT_MIN_POSITION;
+    const nextPosHead = nextPos[0] || DEFAULT_MAX_POSITION;
 
     const diff = Math.abs(prevPosHead - nextPosHead);
-    const newPos = [prevPosHead];
+    console.log('diff', diff);
+    let newPos = [prevPosHead];
 
     if (diff < THRESHOLD_NEW_POSITION_DEPTH) {
-      newPos.push(randomIntInMiddleThirdBetween(DEFAULT_MIN_POSITION, DEFAULT_MAX_POSITION));
+      newPos = newPos.concat(generate(prevPos.slice(1), nextPos.slice(1)));
     } else {
       newPos[0] = randomIntInMiddleThirdBetween(prevPosHead, nextPosHead);
     }
 
-    return encodeBase36Array(newPos)
+    return newPos
   }
 
   function generatePosition (prevPos, nextPos) {
@@ -464,7 +466,7 @@
     const prevPosInt = decodeBase36Array(prevPos);
     const nextPosInt = decodeBase36Array(nextPos);
 
-    return generate(prevPosInt, nextPosInt)
+    return encodeBase36Array(generate(prevPosInt, nextPosInt))
   }
 
   function comparePositions (a, b) {
