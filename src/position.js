@@ -58,8 +58,8 @@ function generate (prevPos, nextPos) {
 }
 
 function generatePosition (prevPos, nextPos) {
-  const prevPosInt = decodeBase36Array(prevPos)
-  const nextPosInt = decodeBase36Array(nextPos)
+  const prevPosInt = (prevPos) ? decodeBase36Array(prevPos) : []
+  const nextPosInt = (nextPos) ? decodeBase36Array(nextPos) : []
   return encodeBase36Array(generate(prevPosInt, nextPosInt))
 }
 
@@ -83,6 +83,6 @@ function compare (a, b) {
 }
 
 export default {
-  generatePosition,
-  comparePositions
+  generate: generatePosition,
+  compare: comparePositions
 }
