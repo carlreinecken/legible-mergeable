@@ -1,7 +1,8 @@
 import {
-  DEFAULT_MAX_POSITION,
-  DEFAULT_MIN_POSITION,
-  THRESHOLD_NEW_POSITION_DEPTH
+  POSITION_DEFAULT_MAX,
+  POSITION_DEFAULT_MIN,
+  POSITION_THRESHOLD_NEW_LEVEL,
+  POSITION_IDENTIFIER_SEPARATOR
 } from './constants'
 import LegibleMergeableError from './LegibleMergeableError'
 
@@ -19,8 +20,12 @@ import LegibleMergeableError from './LegibleMergeableError'
 
 const encodeBase36 = (number) => number.toString(36)
 const decodeBase36 = (string) => parseInt(string, 36)
-const decodeBase36Array = (list) => list.map(value => decodeBase36(value))
-const encodeBase36Array = (list) => list.map(value => encodeBase36(value))
+const decodeBase36Array = (list) => list
+  .split(POSITION_IDENTIFIER_SEPARATOR)
+  .map(value => decodeBase36(value))
+const encodeBase36Array = (list) => list
+  .map(value => encodeBase36(value))
+  .join(POSITION_IDENTIFIER_SEPARATOR)
 
 function randomIntFromMiddleThird (min, max) {
   if (min > max) {
@@ -42,13 +47,13 @@ function generate (prevPos, nextPos) {
     throw new LegibleMergeableError('Could not generate new position, no space available.')
   }
 
-  const prevPosHead = prevPos[0] || DEFAULT_MIN_POSITION
-  const nextPosHead = nextPos[0] || DEFAULT_MAX_POSITION
+  const prevPosHead = prevPos[0] || POSITION_DEFAULT_MIN
+  const nextPosHead = nextPos[0] || POSITION_DEFAULT_MAX
 
   const diff = Math.abs(prevPosHead - nextPosHead)
   let newPos = [prevPosHead]
 
-  if (diff < THRESHOLD_NEW_POSITION_DEPTH) {
+  if (diff < POSITION_THRESHOLD_NEW_LEVEL) {
     newPos = newPos.concat(generate(prevPos.slice(1), nextPos.slice(1)))
   } else {
     newPos[0] = randomIntFromMiddleThird(prevPosHead, nextPosHead)
@@ -68,7 +73,7 @@ function comparePositions (a, b) {
 }
 
 function compare (a, b) {
-  const next = x => x.length > 1 ? x.slice(1) : [DEFAULT_MIN_POSITION]
+  const next = x => x.length > 1 ? x.slice(1) : [POSITION_DEFAULT_MIN]
   const diff = a[0] - b[0]
 
   if (diff === 0 && (a.length > 1 || b.length > 1)) {

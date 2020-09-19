@@ -7,11 +7,12 @@
   const POSITIONS_KEY = '^p';
   const MODIFICATIONS_KEY = '^m';
   const ID_KEY = 'id';
-  const DEFAULT_MIN_POSITION = parseInt('0', 36);
+  const POSITION_DEFAULT_MIN = parseInt('0', 36);
   // in base10 -> 46655
-  const DEFAULT_MAX_POSITION = parseInt('zzz', 36);
+  const POSITION_DEFAULT_MAX = parseInt('zzz', 36);
   // should be divideable by three
-  const THRESHOLD_NEW_POSITION_DEPTH = 3 * 3;
+  const POSITION_THRESHOLD_NEW_LEVEL = 9;
+  const POSITION_IDENTIFIER_SEPARATOR = ',';
 
   function hasKey (object, key) {
     return Object.prototype.hasOwnProperty.call(object, key)
@@ -306,8 +307,12 @@
 
   const encodeBase36 = (number) => number.toString(36);
   const decodeBase36 = (string) => parseInt(string, 36);
-  const decodeBase36Array = (list) => list.map(value => decodeBase36(value));
-  const encodeBase36Array = (list) => list.map(value => encodeBase36(value));
+  const decodeBase36Array = (list) => list
+    .split(POSITION_IDENTIFIER_SEPARATOR)
+    .map(value => decodeBase36(value));
+  const encodeBase36Array = (list) => list
+    .map(value => encodeBase36(value))
+    .join(POSITION_IDENTIFIER_SEPARATOR);
 
   function randomIntFromMiddleThird (min, max) {
     if (min > max) {
@@ -329,13 +334,13 @@
       throw new LegibleMergeableError('Could not generate new position, no space available.')
     }
 
-    const prevPosHead = prevPos[0] || DEFAULT_MIN_POSITION;
-    const nextPosHead = nextPos[0] || DEFAULT_MAX_POSITION;
+    const prevPosHead = prevPos[0] || POSITION_DEFAULT_MIN;
+    const nextPosHead = nextPos[0] || POSITION_DEFAULT_MAX;
 
     const diff = Math.abs(prevPosHead - nextPosHead);
     let newPos = [prevPosHead];
 
-    if (diff < THRESHOLD_NEW_POSITION_DEPTH) {
+    if (diff < POSITION_THRESHOLD_NEW_LEVEL) {
       newPos = newPos.concat(generate(prevPos.slice(1), nextPos.slice(1)));
     } else {
       newPos[0] = randomIntFromMiddleThird(prevPosHead, nextPosHead);
@@ -355,7 +360,7 @@
   }
 
   function compare (a, b) {
-    const next = x => x.length > 1 ? x.slice(1) : [DEFAULT_MIN_POSITION];
+    const next = x => x.length > 1 ? x.slice(1) : [POSITION_DEFAULT_MIN];
     const diff = a[0] - b[0];
 
     if (diff === 0 && (a.length > 1 || b.length > 1)) {

@@ -3,22 +3,22 @@ const generateO = require('../dist/legible-mergeable.js')._positionFunctions.gen
 const compare = require('../dist/legible-mergeable.js')._positionFunctions.compare
 
 function generate (prevPos, nextPos) {
-  prevPos = prevPos.map(n => n.toString(36))
-  nextPos = nextPos.map(n => n.toString(36))
+  prevPos = prevPos.map(n => n.toString(36)).join(',')
+  nextPos = nextPos.map(n => n.toString(36)).join(',')
 
   const result = generateO(prevPos, nextPos)
   // console.log('generate position between', prevPos, nextPos, '>', result)
 
-  return result.map(s => parseInt(s, 36))
+  return result.split(',').map(s => parseInt(s, 36))
 }
 
 describe('position', function () {
   it('compare', function () {
-    expect(compare(['f3'], ['99'])).to.equal(1)
-    expect(compare(['0'], ['zz'])).to.equal(-1)
-    expect(compare(['4f', '66'], ['4g'])).to.equal(-1)
-    expect(compare(['a2', 'fg'], ['a2'])).to.equal(1)
-    expect(compare(['rr', 'g1'], ['rr', 'g1'])).to.equal(0)
+    expect(compare('f3', '99')).to.equal(1)
+    expect(compare('0', 'zz')).to.equal(-1)
+    expect(compare('4f,66', '4g')).to.equal(-1)
+    expect(compare('a2,fg', 'a2')).to.equal(1)
+    expect(compare('rr,g1', 'rr,g1')).to.equal(0)
   })
 
   describe('generate position', function () {

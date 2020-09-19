@@ -38,7 +38,7 @@ describe('api', function () {
       console.log(list + '')
       const meta = list.meta()
       expect(meta[MODIFICATIONS_KEY]).to.eql({ [item.id]: date })
-      expect(Array.isArray(meta[POSITIONS_KEY][item.id])).to.be.true
+      expect(typeof meta[POSITIONS_KEY][item.id]).to.equal('string')
     })
 
     it('a mergeable object with changes', function () {
