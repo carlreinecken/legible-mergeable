@@ -7,10 +7,20 @@ function generate (prevPos, nextPos) {
   nextPos = nextPos.map(n => n.toString(36))
 
   const result = generateO(prevPos, nextPos)
-  console.log('generate position between', prevPos, nextPos, '>', result)
+  // console.log('generate position between', prevPos, nextPos, '>', result)
 
   return result.map(s => parseInt(s, 36))
 }
+
+describe('compare position', function () {
+  it('compare', function () {
+    expect(compare(['f3'], ['99'])).to.equal(1)
+    expect(compare(['0'], ['zz'])).to.equal(-1)
+    expect(compare(['4f', '66'], ['4g'])).to.equal(-1)
+    expect(compare(['a2', 'fg'], ['a2'])).to.equal(1)
+    expect(compare(['rr', 'g1'], ['rr', 'g1'])).to.equal(0)
+  })
+})
 
 describe('generate position', function () {
   it('with one new identifier', function () {
@@ -63,14 +73,20 @@ describe('generate position', function () {
       expect(error.message).to.contain('no space')
     }
   })
-})
 
-describe('compare position', function () {
-  it('compare', function () {
-    expect(compare(['f3'], ['99'])).to.equal(1)
-    expect(compare(['0'], ['zz'])).to.equal(-1)
-    expect(compare(['4f', '66'], ['4g'])).to.equal(-1)
-    expect(compare(['a2', 'fg'], ['a2'])).to.equal(1)
-    expect(compare(['rr', 'g1'], ['rr', 'g1'])).to.equal(0)
+  it('with a new nesting level in nested level', function () {
+    const result = generate([1188, 18], [1188, 20])
+    expect(result.length).to.equal(3)
+    expect(result[0]).to.equal(1188)
+    expect(result[1]).to.equal(18)
+    expect(typeof result[2]).to.equal('number')
+  })
+
+  it('with a new nesting level in two nested levels', function () {
+    const result = generate([4861, 631], [4861, 632])
+    expect(result.length).to.equal(3)
+    expect(result[0]).to.equal(4861)
+    expect(result[1]).to.equal(631)
+    expect(typeof result[2]).to.equal('number')
   })
 })
