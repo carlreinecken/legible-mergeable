@@ -59,9 +59,6 @@ export default class MergeableArray {
   delete (id, date) {
   }
 
-  move (id, afterId, date) {
-  }
-
   last () {
   }
 

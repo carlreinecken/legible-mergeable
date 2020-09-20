@@ -155,6 +155,27 @@ describe('api', function () {
       expect(typeof meta[POSITIONS_KEY][item11.id]).to.equal('string')
       expect(typeof meta[POSITIONS_KEY][item20.id]).to.equal('string')
     })
+
+    it('a mergeable array by inserting multiple items and one in between', function () {
+      const date = new Date('2020-09-20').toISOString()
+      const list = legibleMergeable.Array()
+      const item1 = { id: 44, name: 'Oatmilk', purchased: true }
+      const item2 = { id: 11, name: 'Almondmilk', purchased: false }
+      const item3 = { id: 20, name: 'Soymilk', purchased: false }
+
+      list.insert(item1, date)
+      list.insert(item11, date)
+      list.insert(item20, date)
+
+      const meta = list.meta()
+      expect(list.base()).to.eql([item1, item2, item3])
+      expect(meta[MODIFICATIONS_KEY]).to.eql({ [item1.id]: date, [item2.id]: date, [item3.id]: date })
+      expect(typeof meta[POSITIONS_KEY][item1.id]).to.equal('string')
+      expect(typeof meta[POSITIONS_KEY][item2.id]).to.equal('string')
+      expect(typeof meta[POSITIONS_KEY][item3.id]).to.equal('string')
+    })
+  })
+
   })
 
   describe('merge', function () {
