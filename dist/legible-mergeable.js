@@ -302,7 +302,7 @@
    *    { A: [1], B: [1, 5], C: [2] }
    *
    *    // identifiers with a random "unique" number encoded in base36
-   *    { A: ['a4'], B: ['a4'], ['n1'], C: ['a5'] }
+   *    { A: 'a4', B: 'a4,n1', C: 'a5' }
    */
 
   const encodeBase36 = (number) => number.toString(36);
@@ -404,10 +404,11 @@
     }
 
     has (id) {
+      return this.state.find(item => item.id === id) != null
     }
 
     get (id) {
-      if (this.has(id)) ;
+      return util.deepCopy(this.state.find(item => item.id === id))
     }
 
     reposition () {

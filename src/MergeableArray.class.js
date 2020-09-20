@@ -28,11 +28,11 @@ export default class MergeableArray {
   }
 
   has (id) {
+    return this.state.find(item => item.id === id) != null
   }
 
   get (id) {
-    if (this.has(id)) {
-    }
+    return util.deepCopy(this.state.find(item => item.id === id))
   }
 
   reposition () {

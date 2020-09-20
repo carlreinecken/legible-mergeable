@@ -35,7 +35,6 @@ describe('api', function () {
       list.push(item, date)
 
       expect(list.base()).to.eql([item])
-      console.log(list + '')
       const meta = list.meta()
       expect(meta[MODIFICATIONS_KEY]).to.eql({ [item.id]: date })
       expect(typeof meta[POSITIONS_KEY][item.id]).to.equal('string')
@@ -129,6 +128,32 @@ describe('api', function () {
       expect(changes.isOpen.getTime()).to.equal(date.getTime())
       expect(changes.price.getTime()).to.equal((new Date('2020-09-01').getTime()))
       expect(changes.id).to.be.undefined
+    })
+
+    it('a mergeable array by pushing multiple items, checking and getting elements', function () {
+      const date = new Date('2020-09-20').toISOString()
+      const list = legibleMergeable.Array()
+      const item9 = { id: 9, name: 'Hazelnutmilk', purchased: false }
+      const item11 = { id: 11, name: 'Almondmilk', purchased: true }
+      const item20 = { id: 20, name: 'Soymilk' }
+
+      list.push(item9, date)
+      list.push(item11, date)
+      if (list.has(item9.id)) {
+        item20.purchased = item9.purchased
+        list.push(item20, date)
+      }
+
+      const meta = list.meta()
+      expect(list.base()).to.eql([item9, item11, item20])
+      expect(meta[MODIFICATIONS_KEY]).to.eql({
+        [item9.id]: date,
+        [item11.id]: date,
+        [item20.id]: date
+      })
+      expect(typeof meta[POSITIONS_KEY][item9.id]).to.equal('string')
+      expect(typeof meta[POSITIONS_KEY][item11.id]).to.equal('string')
+      expect(typeof meta[POSITIONS_KEY][item20.id]).to.equal('string')
     })
   })
 
