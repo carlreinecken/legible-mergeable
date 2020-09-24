@@ -435,9 +435,6 @@
     delete (id, date) {
     }
 
-    move (id, afterId, date) {
-    }
-
     last () {
     }
 

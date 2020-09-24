@@ -1,18 +1,36 @@
-const RANGE = 370
-const MAX = parseInt('zzz', 36)
+// left and right are puffer half of tis number for other insertions
+const INNER_RANGE_SIZE = 10000
+const MAX = parseInt('zzzz', 36)
 
-function randomIntFromMiddleThird (min, max) {
+function randomNumber (min, max) {
   const diff = max - min
-  min = min + RANGE * 0.5
-  max = min + RANGE * 1.5
+  if (diff < INNER_RANGE_SIZE * 2) {
+    // create new level instead
+    return
+  }
+
+  // TODO: randomize between boundary- and boundary+ (LSEQ)
+  // if (Math.random() > 0.5) {
+  min = min + INNER_RANGE_SIZE * 0.5
+  max = min + INNER_RANGE_SIZE * 1.5
+  // } else {
+  //   min = max - INNER_RANGE_SIZE * 1.5
+  //   max = max - INNER_RANGE_SIZE * 0.5
+  // }
 
   const result = Math.floor(Math.random() * (max - (min + 1))) + min + 1
   return result
 }
 
-let bar = [0]
-while (bar[0] !== MAX && MAX - bar[0] >= RANGE*3) {
-  bar.unshift(randomIntFromMiddleThird(bar[0], MAX))
+const innerRanges = []
+innerRanges.push(0)
+
+while (innerRanges[0] !== MAX) {
+  const number = randomNumber(innerRanges[0], MAX)
+  if (number == null) break
+  innerRanges.unshift(number)
 }
 
-console.log('amount of basic ranges', bar.length)
+console.log('outer ranges size  ', MAX)
+console.log('inner ranges size  ', INNER_RANGE_SIZE)
+console.log('inner ranges amount', innerRanges.length)

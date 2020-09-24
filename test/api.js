@@ -156,7 +156,7 @@ describe('api', function () {
       expect(typeof meta[POSITIONS_KEY][item20.id]).to.equal('string')
     })
 
-    it('a mergeable array by inserting multiple items and one in between', function () {
+    xit('a mergeable array by inserting multiple items and one in between', function () {
       const date = new Date('2020-09-20').toISOString()
       const list = legibleMergeable.Array()
       const item1 = { id: 44, name: 'Oatmilk', purchased: true }
@@ -164,8 +164,8 @@ describe('api', function () {
       const item3 = { id: 20, name: 'Soymilk', purchased: false }
 
       list.insert(item1, date)
-      list.insert(item11, date)
-      list.insert(item20, date)
+      list.insert(item2, date)
+      list.insert(item3, date)
 
       const meta = list.meta()
       expect(list.base()).to.eql([item1, item2, item3])
@@ -174,8 +174,6 @@ describe('api', function () {
       expect(typeof meta[POSITIONS_KEY][item2.id]).to.equal('string')
       expect(typeof meta[POSITIONS_KEY][item3.id]).to.equal('string')
     })
-  })
-
   })
 
   describe('merge', function () {
