@@ -2,6 +2,7 @@ import util from './util'
 import { MODIFICATIONS_KEY, POSITIONS_KEY, DEFAULT_ID_KEY } from './constants'
 import mergeArray from './merge-array'
 import position from './position'
+import LegibleMergeableError from './LegibleMergeableError'
 
 export default class MergeableArray {
   constructor (state, positions, modifications) {
@@ -52,18 +53,36 @@ export default class MergeableArray {
   }
 
   insert (element, afterId, date) {
+    let afterPosition = null
+    let afterIndex = -1
+
+    if (afterId != null) {
+      afterIndex = this.state.findIndex(item => item[DEFAULT_ID_KEY] === afterId)
+      if (afterIndex === -1) {
+        throw new LegibleMergeableError('Could not find id ' + afterId + ' in array.')
+      }
+      afterPosition = this.positions[this.state[afterIndex][DEFAULT_ID_KEY]]
+    }
+
+    const beforeElement = this.state[afterIndex + 1]
+    const beforePosition = beforeElement != null
+      ? this.positions[beforeElement[DEFAULT_ID_KEY]]
+      : null
+
+    const id = element[DEFAULT_ID_KEY]
+    this.state.splice(afterIndex + 1, 0, element)
+    this.positions[id] = position.generate(afterPosition, beforePosition)
+    this.modifications[id] = util.newDate(date)
   }
 
-  replace (element, replacedId, date) {
+  move (id, afterId, date) {
   }
 
   delete (id, date) {
   }
 
-  last () {
-  }
-
   size () {
+    return this.state.length
   }
 
   /*

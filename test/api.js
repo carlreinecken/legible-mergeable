@@ -144,35 +144,25 @@ describe('api', function () {
         list.push(item20, date)
       }
 
-      const meta = list.meta()
       expect(list.base()).to.eql([item9, item11, item20])
-      expect(meta[MODIFICATIONS_KEY]).to.eql({
-        [item9.id]: date,
-        [item11.id]: date,
-        [item20.id]: date
-      })
-      expect(typeof meta[POSITIONS_KEY][item9.id]).to.equal('string')
-      expect(typeof meta[POSITIONS_KEY][item11.id]).to.equal('string')
-      expect(typeof meta[POSITIONS_KEY][item20.id]).to.equal('string')
     })
 
-    xit('a mergeable array by inserting multiple items and one in between', function () {
+    it('a mergeable array by inserting multiple items and one in between', function () {
       const date = new Date('2020-09-20').toISOString()
       const list = legibleMergeable.Array()
       const item1 = { id: 44, name: 'Oatmilk', purchased: true }
       const item2 = { id: 11, name: 'Almondmilk', purchased: false }
       const item3 = { id: 20, name: 'Soymilk', purchased: false }
+      const item4 = { id: 1, name: 'Water', purchased: false }
+      const item5 = { id: 3, name: 'Soup', purchased: true }
 
-      list.insert(item1, date)
-      list.insert(item2, date)
-      list.insert(item3, date)
+      list.insert(item1, null, date)
+      list.insert(item2, 44, date)
+      list.insert(item3, 44, date)
+      list.push(item4, 11, date)
+      list.insert(item5, null, date)
 
-      const meta = list.meta()
-      expect(list.base()).to.eql([item1, item2, item3])
-      expect(meta[MODIFICATIONS_KEY]).to.eql({ [item1.id]: date, [item2.id]: date, [item3.id]: date })
-      expect(typeof meta[POSITIONS_KEY][item1.id]).to.equal('string')
-      expect(typeof meta[POSITIONS_KEY][item2.id]).to.equal('string')
-      expect(typeof meta[POSITIONS_KEY][item3.id]).to.equal('string')
+      expect(list.base()).to.eql([item5, item1, item3, item2, item4])
     })
   })
 
