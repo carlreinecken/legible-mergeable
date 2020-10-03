@@ -6,27 +6,6 @@ import {
 } from './constants'
 import LegibleMergeableError from './LegibleMergeableError'
 
-/* How Positions are generated and compared
- *
- * Based on CRDT LOGOOT sequence algorithm.
- * Numbers are encoded in base36 to save character space.
- *
- *    // identifiers: A < B < C
- *    { A: [1], B: [1, 5], C: [2] }
- *
- *    // identifiers with a random "unique" number encoded in base36
- *    { A: 'a4', B: 'a4,n1', C: 'a5' }
- */
-
-const encodeBase36 = (number) => number.toString(36)
-const decodeBase36 = (string) => parseInt(string, 36)
-const decodeBase36Array = (list) => list
-  .split(POSITION_IDENTIFIER_SEPARATOR)
-  .map(value => decodeBase36(value))
-const encodeBase36Array = (list) => list
-  .map(value => encodeBase36(value))
-  .join(POSITION_IDENTIFIER_SEPARATOR)
-
 function randomIntFromMiddleThird (min, max) {
   if (min > max) {
     const temp = min
@@ -43,6 +22,9 @@ function randomIntFromMiddleThird (min, max) {
 }
 
 function generate (prevPos, nextPos) {
+  prevPos = prevPos || []
+  nextPos = nextPos || []
+
   if (prevPos.length > 0 && nextPos.length > 0 && compare(prevPos, nextPos) === 0) {
     throw new LegibleMergeableError('Could not generate new position, no space available.')
   }
@@ -62,16 +44,6 @@ function generate (prevPos, nextPos) {
   return newPos
 }
 
-function generatePosition (prevPos, nextPos) {
-  const prevPosInt = (prevPos) ? decodeBase36Array(prevPos) : []
-  const nextPosInt = (nextPos) ? decodeBase36Array(nextPos) : []
-  return encodeBase36Array(generate(prevPosInt, nextPosInt))
-}
-
-function comparePositions (a, b) {
-  return compare(decodeBase36Array(a), decodeBase36Array(b))
-}
-
 function compare (a, b) {
   const next = x => x.length > 1 ? x.slice(1) : [POSITION_DEFAULT_MIN]
   const diff = a[0] - b[0]
@@ -87,7 +59,29 @@ function compare (a, b) {
   return 0
 }
 
+function decodeBase36 (object) {
+  const result = {}
+  for (const [key, list] of Object.entries(object)) {
+    result[key] = list
+      .split(POSITION_IDENTIFIER_SEPARATOR)
+      .map(string => parseInt(string, 36))
+  }
+  return result
+}
+
+function encodeToBase36 (object) {
+  const result = {}
+  for (const [key, list] of Object.entries(object)) {
+    result[key] = list
+      .map(number => number.toString(36))
+      .join(POSITION_IDENTIFIER_SEPARATOR)
+  }
+  return result
+}
+
 export default {
-  generate: generatePosition,
-  compare: comparePositions
+  generate,
+  compare,
+  decodeBase36,
+  encodeToBase36
 }

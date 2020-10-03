@@ -15,13 +15,14 @@ export default class MergeableArray {
     let positions = {}
     const state = util.deepCopy(array || [])
 
-    const changesIndex = state.findIndex(item => {
-      return util.hasKey(item, MODIFICATIONS_KEY) && util.hasKey(item, POSITIONS_KEY)
-    })
-    if (changesIndex > 0) {
-      const metaItem = state.splice(changesIndex, 1)[0]
+    const metaIndex = state.findIndex(item =>
+      util.hasKey(item, MODIFICATIONS_KEY) &&
+      util.hasKey(item, POSITIONS_KEY)
+    )
+    if (metaIndex > 0) {
+      const metaItem = state.splice(metaIndex, 1)[0]
       modifications = util.parseChangeDates(metaItem[MODIFICATIONS_KEY])
-      positions = metaItem[POSITIONS_KEY]
+      positions = position.decodeToBase36(metaItem[POSITIONS_KEY])
     }
 
     return new this(state, positions, modifications)
@@ -66,7 +67,7 @@ export default class MergeableArray {
   }
 
   /*
-   * The state without the changes, it's the "pure" document
+   * The state without the meta object, it's the "pure" document
    * @return the state
    */
   base () {
@@ -76,7 +77,7 @@ export default class MergeableArray {
   meta () {
     return util.deepCopy({
       [MODIFICATIONS_KEY]: this.modifications,
-      [POSITIONS_KEY]: this.positions
+      [POSITIONS_KEY]: position.encodeToBase36(this.positions)
     })
   }
 

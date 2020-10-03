@@ -1,13 +1,13 @@
 const expect = require('chai').expect
 const mergeArrayIm = require('../dist/legible-mergeable.js')._mergeFunction.mergeArray
 
-function parseChangeDates (changes) {
-  return Object.keys(changes).reduce((acc, key) => {
-    return { ...acc, [key]: new Date(changes[key]) }
-  }, {})
-}
-
 function p (expected) {
+  const parseChangeDates = (changes) => {
+    return Object.keys(changes).reduce((acc, key) => {
+      return { ...acc, [key]: new Date(changes[key]) }
+    }, {})
+  }
+
   return {
     val: expected.val.map(id => { return { id } }),
     mod: parseChangeDates(expected.mod),

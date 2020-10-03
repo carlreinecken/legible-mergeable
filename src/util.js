@@ -7,9 +7,11 @@ function deepCopy (value) {
 }
 
 function parseChangeDates (changes) {
-  return Object.keys(changes).reduce((acc, key) => {
-    return { ...acc, [key]: new Date(changes[key]) }
-  }, {})
+  const result = {}
+  for (const [key, value] of Object.entries(changes)) {
+    result[key] = new Date(value)
+  }
+  return result
 }
 
 function newDate (date) {

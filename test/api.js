@@ -156,7 +156,7 @@ describe('api', function () {
       expect(typeof meta[POSITIONS_KEY][item20.id]).to.equal('string')
     })
 
-    it('a mergeable array by inserting multiple items and one in between', function () {
+    xit('a mergeable array by inserting multiple items and one in between', function () {
       const date = new Date('2020-09-20').toISOString()
       const list = legibleMergeable.Array()
       const item1 = { id: 44, name: 'Oatmilk', purchased: true }

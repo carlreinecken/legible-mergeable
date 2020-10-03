@@ -1,24 +1,14 @@
 const expect = require('chai').expect
-const generateO = require('../dist/legible-mergeable.js')._positionFunctions.generate
+const generate = require('../dist/legible-mergeable.js')._positionFunctions.generate
 const compare = require('../dist/legible-mergeable.js')._positionFunctions.compare
-
-function generate (prevPos, nextPos) {
-  prevPos = prevPos.map(n => n.toString(36)).join(',')
-  nextPos = nextPos.map(n => n.toString(36)).join(',')
-
-  const result = generateO(prevPos, nextPos)
-  // console.log('generate position between', prevPos, nextPos, '>', result)
-
-  return result.split(',').map(s => parseInt(s, 36))
-}
 
 describe('position', function () {
   it('compare', function () {
-    expect(compare('f3', '99')).to.equal(1)
-    expect(compare('0', 'zz')).to.equal(-1)
-    expect(compare('4f,66', '4g')).to.equal(-1)
-    expect(compare('a2,fg', 'a2')).to.equal(1)
-    expect(compare('rr,g1', 'rr,g1')).to.equal(0)
+    expect(compare([534], [333])).to.equal(1)
+    expect(compare([0], [1295])).to.equal(-1)
+    expect(compare([159, 222], [160])).to.equal(-1)
+    expect(compare([362, 556], [362])).to.equal(1)
+    expect(compare([999, 577], [999, 577])).to.equal(0)
   })
 
   describe('generate position', function () {
