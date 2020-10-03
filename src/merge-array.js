@@ -1,5 +1,6 @@
 import util from './util'
 import { DEFAULT_ID_KEY } from './constants'
+import position from './position'
 
 function getModifications (a, b) {
   const result = {
@@ -108,10 +109,10 @@ export default function merge (docA, docB) {
     }
   }
 
-  result.val.sort((a, b) => {
-    return result.pos[a[DEFAULT_ID_KEY]] - result.pos[b[DEFAULT_ID_KEY]]
-    // TODO: if not same id and substraction is 0, then compare mod dates
-  })
+  result.val.sort((a, b) => position.compare(
+    result.pos[a[DEFAULT_ID_KEY]],
+    result.pos[b[DEFAULT_ID_KEY]]
+  ))
 
   return result
 }
