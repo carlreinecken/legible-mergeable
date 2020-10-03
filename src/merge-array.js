@@ -1,4 +1,5 @@
 import util from './util'
+import { DEFAULT_ID_KEY } from './constants'
 
 function getModifications (a, b) {
   const result = {
@@ -58,11 +59,10 @@ function getIdsMap (doc, idKey) {
 }
 
 export default function merge (docA, docB) {
-  const ID_KEY = 'id'
   const result = { val: [], mod: {}, pos: {} }
   const input = {
-    a: { positions: docA.pos, changes: docA.mod, values: getIdsMap(docA.val, ID_KEY) },
-    b: { positions: docB.pos, changes: docB.mod, values: getIdsMap(docB.val, ID_KEY) }
+    a: { positions: docA.pos, changes: docA.mod, values: getIdsMap(docA.val, DEFAULT_ID_KEY) },
+    b: { positions: docB.pos, changes: docB.mod, values: getIdsMap(docB.val, DEFAULT_ID_KEY) }
   }
 
   const modifications = getAllModifications(input.a, input.b)
@@ -109,7 +109,7 @@ export default function merge (docA, docB) {
   }
 
   result.val.sort((a, b) => {
-    return result.pos[a[ID_KEY]] - result.pos[b[ID_KEY]]
+    return result.pos[a[DEFAULT_ID_KEY]] - result.pos[b[DEFAULT_ID_KEY]]
     // TODO: if not same id and substraction is 0, then compare mod dates
   })
 

@@ -6,11 +6,10 @@
 
   const POSITIONS_KEY = '^p';
   const MODIFICATIONS_KEY = '^m';
-  const ID_KEY = 'id';
+  const DEFAULT_ID_KEY = 'id';
+
   const POSITION_DEFAULT_MIN = parseInt('0', 36);
-  // in base10 -> 46655
   const POSITION_DEFAULT_MAX = parseInt('zzz', 36);
-  // should be divideable by three
   const POSITION_THRESHOLD_NEW_LEVEL = 9;
   const POSITION_IDENTIFIER_SEPARATOR = ',';
 
@@ -228,11 +227,10 @@
   }
 
   function merge$1 (docA, docB) {
-    const ID_KEY = 'id';
     const result = { val: [], mod: {}, pos: {} };
     const input = {
-      a: { positions: docA.pos, changes: docA.mod, values: getIdsMap(docA.val, ID_KEY) },
-      b: { positions: docB.pos, changes: docB.mod, values: getIdsMap(docB.val, ID_KEY) }
+      a: { positions: docA.pos, changes: docA.mod, values: getIdsMap(docA.val, DEFAULT_ID_KEY) },
+      b: { positions: docB.pos, changes: docB.mod, values: getIdsMap(docB.val, DEFAULT_ID_KEY) }
     };
 
     const modifications = getAllModifications(input.a, input.b);
@@ -279,7 +277,7 @@
     }
 
     result.val.sort((a, b) => {
-      return result.pos[a[ID_KEY]] - result.pos[b[ID_KEY]]
+      return result.pos[a[DEFAULT_ID_KEY]] - result.pos[b[DEFAULT_ID_KEY]]
       // TODO: if not same id and substraction is 0, then compare mod dates
     });
 
@@ -416,10 +414,10 @@
     }
 
     push (element, date) {
-      const id = element[ID_KEY];
+      const id = element[DEFAULT_ID_KEY];
 
       const prevItem = this.state[this.state.length - 1];
-      const prevPosition = (prevItem) ? this.positions[prevItem[ID_KEY]] : null;
+      const prevPosition = (prevItem) ? this.positions[prevItem[DEFAULT_ID_KEY]] : null;
       this.positions[id] = positionFunctions.generate(prevPosition, null);
 
       this.state.push(element);
