@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+    <head>
+        <title></title>
+        <meta charset="UTF-8">
+        <meta name="robots" content="noindex, nofollow">
+        <link rel="stylesheet" href="main.css">
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: sans-serif;
+            }
+
+            .client {
+                border: 1px solid #bbb;
+                width: 300px;
+                min-height: 400px;
+                padding: 10px;
+                float: left;
+                margin-right: 10px;
+            }
+
+            .client > .newItem {
+                padding: 10px 0;
+            }
+
+            .flex {
+                display: flex;
+                justify-content: space-between;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id="app">
+            <div class="client" v-for="(client, clientIndex) in clients">
+                <div class="flex">
+                    <h3 style="margin: 0">{{ client.name }}</h3>
+                    <div>
+                        <button @click="cloneClient(clientIndex)">Clone</button>
+                        <button @click="sendToClient()">Send</button>
+                    </div>
+                </div>
+
+                <div class="newItem flex">
+                    <input v-model="client.newItem" @keyup.enter="addItem(clientIndex)" />
+                    <button @click="addItem(clientIndex)">Add</button>
+                </div>
+
+                <div class="item" v-for="item in client.list.base()" title="item.id">
+                    <input v-model="item.title" />
+                    <button @click="deleteItem(clientIndex, item.id)">X</button>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+        <script src="dist/legible-mergeable.js"></script>
+        <script>
+/* global legibleMergeable */
+const app = new Vue({
+    el: '#app',
+    data: {
+        clients: []
+    },
+
+    mounted () {
+        this.addClient('Alice')
+    },
+
+    methods: {
+        addClient (name) {
+            this.clients.push({
+                name,
+                newItem: '',
+                list: legibleMergeable.Array()
+            })
+        },
+
+        cloneClient (clientIndex) {
+            this.clients.push({
+                name: prompt('Client Name'),
+                newItem: '',
+                list: this.clients[clientIndex].list.clone()
+            })
+        },
+
+        addItem (clientIndex) {
+            this.clients[clientIndex].list.push({
+                id: this.randomId(5),
+                title: this.clients[clientIndex].newItem
+            })
+            this.clients[clientIndex].newItem = ''
+        },
+
+        deleteItem (clientIndex, id) {
+            this.clients[clientIndex].list.delete(id)
+        },
+
+        randomId (length) {
+            return parseInt(Math.random().toString().slice(2, 2 + length)).toString(36)
+        }
+    }
+})
+        </script>
+    </body>
+</html>

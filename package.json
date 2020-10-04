@@ -1,5 +1,5 @@
 {
-  "name": "plain-array-crdt",
+  "name": "legibleMergeable",
   "private": true,
   "version": "0.1.0",
   "license": "MIT",
@@ -12,7 +12,7 @@
     "lint": "standard",
     "clean": "rm -r dist && mkdir dist",
     "prebuild": "npm run lint && npm run clean",
-    "build": "rollup src/index.js --file dist/legible-mergeable.js --format umd --name legible-mergeable",
+    "build": "rollup src/index.js --file dist/legible-mergeable.js --format umd --name legibleMergeable",
     "postbuild": "terser dist/legible-mergeable.js > dist/legible-mergeable.min.js"
   },
   "standard": {
