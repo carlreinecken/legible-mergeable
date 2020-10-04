@@ -186,7 +186,20 @@ describe('api', function () {
       grains.move(oat.id, null)
       grains.move(wheat.id, grains.last().id)
 
-      expect(grains.base()).to.eql([ oat, rye, maize, barley, millet, wheat ])
+      expect(grains.base()).to.eql([oat, rye, maize, barley, millet, wheat])
+    })
+
+    it('a mergeable array by moving multiple items', function () {
+      const rye = { id: 'qox', name: 'Rye', season: 'cool' }
+      const wheat = { id: 'a71', name: 'Wheat', season: 'cool' }
+      const barley = { id: '2is', name: 'Baryley', season: 'cool' }
+
+      const grains = legibleMergeable.Array([rye, wheat, barley])
+
+      grains.delete(rye.id)
+      grains.delete(barley.id)
+
+      expect(grains.base()).to.eql([wheat])
     })
   })
 
