@@ -37,10 +37,6 @@ export default class MergeableArray {
     return util.deepCopy(this.state.find(item => item.id === id))
   }
 
-  reposition () {
-    // set new positions for all elements and set all modification dates
-  }
-
   push (element, date) {
     const id = element[DEFAULT_ID_KEY]
 
@@ -76,6 +72,10 @@ export default class MergeableArray {
   }
 
   move (id, afterId, date) {
+  }
+
+  reposition () {
+    // set new positions for all elements and set all modification dates
   }
 
   delete (id, date) {

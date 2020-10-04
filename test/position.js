@@ -14,7 +14,7 @@ describe('position', function () {
   describe('generate position', function () {
     it('with one new identifier', function () {
       const result = generate([543], [333])
-      expect(result.length).to.equal(1)
+      expect(result.length).to.equal(2)
       expect(typeof result[0]).to.equal('number')
       expect(result[0]).to.be.within(333, 543)
     })
@@ -35,16 +35,22 @@ describe('position', function () {
     })
 
     it('with NO new nesting level, because difference is just about the threshold', function () {
-      const result = generate([3000, 10], [3000, 20])
+      const threshold = 10000000
+      const min = 10
+      const max = threshold * 2 + min + 1
+      const result = generate([2000, min], [2000, max])
       expect(result.length).to.equal(2)
-      expect(result[0]).to.equal(3000)
-      expect(result[1]).to.be.within(10, 20)
+      expect(result[0]).to.equal(2000)
+      expect(result[1]).to.be.within(min, max)
     })
 
     it('with no nesting level, because first level has large enough difference', function () {
-      const result = generate([100, 42], [3000, 44])
+      const threshold = 10000000
+      const min = 100
+      const max = threshold * 2 + min + 1
+      const result = generate([min, 42], [max, 44])
       expect(result.length).to.equal(1)
-      expect(result[0]).to.be.within(100, 3000)
+      expect(result[0]).to.be.within(min, max)
     })
 
     it('fail when no space in between', function () {

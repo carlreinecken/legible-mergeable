@@ -1,25 +1,10 @@
 import {
   POSITION_DEFAULT_MAX,
   POSITION_DEFAULT_MIN,
-  POSITION_THRESHOLD_NEW_LEVEL,
+  POSITION_INNER_RANGE_SIZE,
   POSITION_IDENTIFIER_SEPARATOR
 } from './constants'
 import LegibleMergeableError from './LegibleMergeableError'
-
-function randomIntFromMiddleThird (min, max) {
-  if (min > max) {
-    const temp = min
-    min = max
-    max = temp
-  }
-
-  const diff = max - min
-  const third = Math.floor(diff * 0.3)
-  min = min + third
-  max = max - third
-
-  return Math.floor(Math.random() * (max - (min + 1))) + min + 1
-}
 
 function generate (prevPos, nextPos) {
   prevPos = prevPos || []
@@ -35,10 +20,19 @@ function generate (prevPos, nextPos) {
   const diff = Math.abs(prevPosHead - nextPosHead)
   let newPos = [prevPosHead]
 
-  if (diff < POSITION_THRESHOLD_NEW_LEVEL) {
+  if (diff < POSITION_INNER_RANGE_SIZE * 2) {
     newPos = newPos.concat(generate(prevPos.slice(1), nextPos.slice(1)))
   } else {
-    newPos[0] = randomIntFromMiddleThird(prevPosHead, nextPosHead)
+    let min = prevPosHead + POSITION_INNER_RANGE_SIZE * 0.5
+    let max = prevPosHead + POSITION_INNER_RANGE_SIZE * 1.5
+
+    if (min > max) {
+      const temp = min
+      min = max
+      max = temp
+    }
+
+    newPos[0] = Math.floor(Math.random() * (max - (min + 1))) + min + 1
   }
 
   return newPos

@@ -9,10 +9,10 @@
   const POSITIONS_KEY = '^p';
   const MODIFICATIONS_KEY = '^m';
 
-  const POSITION_DEFAULT_MIN = parseInt('0', 36);
-  const POSITION_DEFAULT_MAX = parseInt('zzz', 36);
-  const POSITION_THRESHOLD_NEW_LEVEL = 9;
+  const POSITION_DEFAULT_MIN = 0;
+  const POSITION_DEFAULT_MAX = parseInt('zzzzzz', 36);
   const POSITION_IDENTIFIER_SEPARATOR = ',';
+  const POSITION_INNER_RANGE_SIZE = 10000000;
 
   function hasKey (object, key) {
     return Object.prototype.hasOwnProperty.call(object, key)
@@ -179,21 +179,6 @@
     }
   }
 
-  function randomIntFromMiddleThird (min, max) {
-    if (min > max) {
-      const temp = min;
-      min = max;
-      max = temp;
-    }
-
-    const diff = max - min;
-    const third = Math.floor(diff * 0.3);
-    min = min + third;
-    max = max - third;
-
-    return Math.floor(Math.random() * (max - (min + 1))) + min + 1
-  }
-
   function generate (prevPos, nextPos) {
     prevPos = prevPos || [];
     nextPos = nextPos || [];
@@ -208,10 +193,19 @@
     const diff = Math.abs(prevPosHead - nextPosHead);
     let newPos = [prevPosHead];
 
-    if (diff < POSITION_THRESHOLD_NEW_LEVEL) {
+    if (diff < POSITION_INNER_RANGE_SIZE * 2) {
       newPos = newPos.concat(generate(prevPos.slice(1), nextPos.slice(1)));
     } else {
-      newPos[0] = randomIntFromMiddleThird(prevPosHead, nextPosHead);
+      let min = prevPosHead + POSITION_INNER_RANGE_SIZE * 0.5;
+      let max = prevPosHead + POSITION_INNER_RANGE_SIZE * 1.5;
+
+      if (min > max) {
+        const temp = min;
+        min = max;
+        max = temp;
+      }
+
+      newPos[0] = Math.floor(Math.random() * (max - (min + 1))) + min + 1;
     }
 
     return newPos
@@ -407,10 +401,6 @@
       return util.deepCopy(this.state.find(item => item.id === id))
     }
 
-    reposition () {
-      // set new positions for all elements and set all modification dates
-    }
-
     push (element, date) {
       const id = element[DEFAULT_ID_KEY];
 
@@ -446,6 +436,10 @@
     }
 
     move (id, afterId, date) {
+    }
+
+    reposition () {
+      // set new positions for all elements and set all modification dates
     }
 
     delete (id, date) {
