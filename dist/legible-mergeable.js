@@ -19,7 +19,6 @@
   }
 
   function deepCopy (value) {
-    // console.log('deepCopy', JSON.stringify(value))
     return JSON.parse(JSON.stringify(value))
   }
 
@@ -228,10 +227,8 @@
   }
 
   function decodeBase36 (object) {
-    console.log('decodeBase36', Object.entries(object));
     const result = {};
     for (const [key, list] of Object.entries(object)) {
-      console.log('decodeBase36', list);
       result[key] = list
         .split(POSITION_IDENTIFIER_SEPARATOR)
         .map(string => parseInt(string, 36));
@@ -390,7 +387,6 @@
       if (metaIndex !== -1) {
         const metaItem = state.splice(metaIndex, 1)[0];
         modifications = util.parseChangeDates(metaItem[MODIFICATIONS_KEY]);
-        console.log('posyionf', metaItem[POSITIONS_KEY]);
         positions = positionFunctions.decodeBase36(metaItem[POSITIONS_KEY]);
       }
 

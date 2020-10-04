@@ -170,7 +170,7 @@ describe('api', function () {
     it('a mergeable array by moving multiple items', function () {
       const rye = { id: 1, name: 'Rye', season: 'cool' }
       const wheat = { id: 2, name: 'Wheat', season: 'cool' }
-      const barley = { id: 3, name: 'Baryley', season: 'cool' }
+      const barley = { id: 3, name: 'Barley', season: 'cool' }
       const oat = { id: 4, name: 'Oat', season: 'cool' }
       const millet = { id: 5, name: 'Millet', season: 'warm' }
       const maize = { id: 6, name: 'Maize', season: 'warm' }
@@ -192,7 +192,7 @@ describe('api', function () {
     it('a mergeable array by moving multiple items', function () {
       const rye = { id: 'qox', name: 'Rye', season: 'cool' }
       const wheat = { id: 'a71', name: 'Wheat', season: 'cool' }
-      const barley = { id: '2is', name: 'Baryley', season: 'cool' }
+      const barley = { id: '2is', name: 'Barley', season: 'cool' }
 
       const grains = legibleMergeable.Array([rye, wheat, barley])
 
@@ -244,5 +244,21 @@ describe('api', function () {
       expect(changes.isCold.getTime()).to.equal((new Date('2020-08-05')).getTime())
       expect(changes.isOpen).to.be.undefined
     })
+  })
+
+  it('a modified array')
+
+  it('an empty array')
+
+  xit('a modified array with modified objects', function () {
+    const item1 = legibleMergeable.Object({ id: 1, title: 'Buy Flour', done: true })
+    const item2 = legibleMergeable.Object({ id: 2, title: 'Change Lightbulb', done: false })
+    const item3 = legibleMergeable.Object({ id: 3, title: 'Cook spicy meal', done: false })
+
+    const grains = legibleMergeable.Array([item1, item2, item3])
+    // TODO: you cant deepclone these items
+    // TODO: how does the array class access the id
+
+    expect(grains.base()).to.eql([])
   })
 })
