@@ -1,10 +1,9 @@
 <!doctype html>
 <html>
     <head>
-        <title></title>
+        <title>legibleMergeable Demo</title>
         <meta charset="UTF-8">
         <meta name="robots" content="noindex, nofollow">
-        <link rel="stylesheet" href="main.css">
         <style>
             * {
                 box-sizing: border-box;
@@ -14,45 +13,82 @@
                 font-family: sans-serif;
             }
 
+            .clients {
+                display: flex;
+                flex-wrap: wrap;
+            }
+
             .client {
                 border: 1px solid #bbb;
                 width: 300px;
                 min-height: 400px;
                 padding: 10px;
-                float: left;
                 margin-right: 10px;
+                margin-bottom: 10px;
             }
 
             .client > .newItem {
                 padding: 10px 0;
-            }
-
-            .flex {
                 display: flex;
                 justify-content: space-between;
+            }
+
+            .sendMode > .client input,
+            .sendMode > .client button {
+                pointer-events: none;
+                opacity: 0.5;
+            }
+
+            .sendMode > .client:hover {
+                cursor: pointer;
+                background-color: #93c2ff;
+                border-color: #93c2ff;
+            }
+
+            header {
+                display: flex;
+                justify-content: space-between;
+            }
+
+            .stopSendMode {
+                display: block;
             }
         </style>
     </head>
 
     <body>
         <div id="app">
-            <div class="client" v-for="(client, clientIndex) in clients">
-                <div class="flex">
-                    <h3 style="margin: 0">{{ client.name }}</h3>
-                    <div>
-                        <button @click="cloneClient(clientIndex)">Clone</button>
-                        <button @click="sendToClient()">Send</button>
+            <button :disabled="sendFrom == null"
+                    @click="stopSendMode()"
+                    class=".stopSendMode">
+                Stop Sending
+            </button>
+
+            <div class="clients" :class="{sendMode: sendFrom != null}">
+                <div v-for="(client, clientIndex) in clients"
+                     :key="client.name"
+                     class="client"
+                     @click="sendToClient(clientIndex)">
+                    <header>
+                        <h3 style="margin: 0">{{ client.name }}</h3>
+                        <div>
+                            <button @click="cloneClient(clientIndex)">Clone</button>
+                            <button @click.stop="startSendMode(clientIndex)">Send</button>
+                        </div>
+                    </header>
+
+                    <div class="newItem">
+                        <input v-model="client.newItem" @keyup.enter="addItem(clientIndex)" />
+                        <button @click="addItem(clientIndex)">Add</button>
                     </div>
-                </div>
 
-                <div class="newItem flex">
-                    <input v-model="client.newItem" @keyup.enter="addItem(clientIndex)" />
-                    <button @click="addItem(clientIndex)">Add</button>
-                </div>
-
-                <div class="item" v-for="item in client.list.base()" title="item.id">
-                    <input v-model="item.title" />
-                    <button @click="deleteItem(clientIndex, item.id)">X</button>
+                    <div class="item"
+                         v-for="item in client.list.state"
+                         :key="client.name + item.id"
+                         title="item.id">
+                        <input v-model="item.title" />
+                        <button @click="deleteItem(clientIndex, item.id)">X</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -64,33 +100,47 @@
 const app = new Vue({
     el: '#app',
     data: {
-        clients: []
+        sendFrom: null,
+        clients: [],
+        names: ['Alice', 'Bob', 'Carol', 'Dave', 'Eric', 'Florence']
     },
 
     mounted () {
-        this.addClient('Alice')
+        this.addClient()
     },
 
     methods: {
-        addClient (name) {
+        addClient (list) {
+            const name = (this.names.length > 0) ? this.names.shift() : prompt('Client Name')
+            if (!name) return
             this.clients.push({
                 name,
                 newItem: '',
-                list: legibleMergeable.Array()
+                list: list || legibleMergeable.Array()
             })
         },
 
         cloneClient (clientIndex) {
-            this.clients.push({
-                name: prompt('Client Name'),
-                newItem: '',
-                list: this.clients[clientIndex].list.clone()
-            })
+            this.addClient(this.clients[clientIndex].list.clone())
+        },
+
+        stopSendMode () {
+            this.sendFrom = null
+        },
+
+        startSendMode (clientIndex) {
+            this.sendFrom = clientIndex
+        },
+
+        sendToClient (clientIndex) {
+            if (this.sendFrom == null) return
+            this.clients[clientIndex].list.merge(this.clients[this.sendFrom].list)
         },
 
         addItem (clientIndex) {
+            const randomId = (length) => parseInt(Math.random().toString().slice(2, 2 + length)).toString(36)
             this.clients[clientIndex].list.push({
-                id: this.randomId(5),
+                id: randomId(5),
                 title: this.clients[clientIndex].newItem
             })
             this.clients[clientIndex].newItem = ''
@@ -98,10 +148,6 @@ const app = new Vue({
 
         deleteItem (clientIndex, id) {
             this.clients[clientIndex].list.delete(id)
-        },
-
-        randomId (length) {
-            return parseInt(Math.random().toString().slice(2, 2 + length)).toString(36)
         }
     }
 })

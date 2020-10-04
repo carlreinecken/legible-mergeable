@@ -1,7 +1,7 @@
 import util from './util'
 import { MODIFICATIONS_KEY, POSITIONS_KEY, DEFAULT_ID_KEY } from './constants'
 import mergeArray from './merge-array'
-import position from './position'
+import positionFunctions from './position'
 import LegibleMergeableError from './LegibleMergeableError'
 
 export default class MergeableArray {
@@ -23,7 +23,7 @@ export default class MergeableArray {
     if (metaIndex !== -1) {
       const metaItem = state.splice(metaIndex, 1)[0]
       modifications = util.parseChangeDates(metaItem[MODIFICATIONS_KEY])
-      positions = position.decodeToBase36(metaItem[POSITIONS_KEY])
+      positions = positionFunctions.decodeBase36(metaItem[POSITIONS_KEY])
     }
 
     return new this(state, positions, modifications)
@@ -42,7 +42,7 @@ export default class MergeableArray {
 
     const prevItem = this.state[this.state.length - 1]
     const prevPosition = (prevItem) ? this.positions[prevItem[DEFAULT_ID_KEY]] : null
-    this.positions[id] = position.generate(prevPosition, null)
+    this.positions[id] = positionFunctions.generate(prevPosition, null)
 
     this.state.push(element)
     this.modifications[id] = util.newDate(date)
@@ -71,7 +71,7 @@ export default class MergeableArray {
 
     const id = element[DEFAULT_ID_KEY]
     this.state.splice(afterIndex + 1, 0, element)
-    this.positions[id] = position.generate(afterPosition, beforePosition)
+    this.positions[id] = positionFunctions.generate(afterPosition, beforePosition)
     this.modifications[id] = util.newDate(date)
   }
 
@@ -125,7 +125,7 @@ export default class MergeableArray {
   meta () {
     return util.deepCopy({
       [MODIFICATIONS_KEY]: this.modifications,
-      [POSITIONS_KEY]: position.encodeToBase36(this.positions)
+      [POSITIONS_KEY]: positionFunctions.encodeToBase36(this.positions)
     })
   }
 
@@ -152,25 +152,35 @@ export default class MergeableArray {
     )
   }
 
-  static merge (stateA, stateB) {
+  static merge (a, b) {
     const result = mergeArray({
-      val: stateA.state,
-      mod: stateA.modifications,
-      pos: stateA.positions
+      val: a.state,
+      mod: a.modifications,
+      pos: a.positions
     }, {
-      val: stateB.state,
-      mod: stateB.modifications,
-      pos: stateB.positions
+      val: b.state,
+      mod: b.modifications,
+      pos: b.positions
     })
-    result.content.push({ [MODIFICATIONS_KEY]: result.mod, [POSITIONS_KEY]: result.pos })
-    return MergeableArray.create(result.content)
+    return new MergeableArray(result.val, result.pos, result.mod)
   }
 
-  merge (stateB) {
-    const result = MergeableArray.merge(this, stateB)
+  merge (b) {
+    b = util.deepCopy(b)
+    const result = mergeArray({
+      val: this.state,
+      mod: this.modifications,
+      pos: this.positions
+    }, {
+      val: b.state,
+      mod: b.modifications,
+      pos: b.positions
+    })
+
     this.state = result.val
     this.modifications = result.mod
     this.positions = result.pos
+
     return this
   }
 }

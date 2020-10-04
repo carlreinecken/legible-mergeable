@@ -19,6 +19,7 @@
   }
 
   function deepCopy (value) {
+    // console.log('deepCopy', JSON.stringify(value))
     return JSON.parse(JSON.stringify(value))
   }
 
@@ -227,8 +228,10 @@
   }
 
   function decodeBase36 (object) {
+    console.log('decodeBase36', Object.entries(object));
     const result = {};
     for (const [key, list] of Object.entries(object)) {
+      console.log('decodeBase36', list);
       result[key] = list
         .split(POSITION_IDENTIFIER_SEPARATOR)
         .map(string => parseInt(string, 36));
@@ -387,7 +390,8 @@
       if (metaIndex !== -1) {
         const metaItem = state.splice(metaIndex, 1)[0];
         modifications = util.parseChangeDates(metaItem[MODIFICATIONS_KEY]);
-        positions = positionFunctions.decodeToBase36(metaItem[POSITIONS_KEY]);
+        console.log('posyionf', metaItem[POSITIONS_KEY]);
+        positions = positionFunctions.decodeBase36(metaItem[POSITIONS_KEY]);
       }
 
       return new this(state, positions, modifications)
@@ -516,25 +520,35 @@
       )
     }
 
-    static merge (stateA, stateB) {
+    static merge (a, b) {
       const result = merge$1({
-        val: stateA.state,
-        mod: stateA.modifications,
-        pos: stateA.positions
+        val: a.state,
+        mod: a.modifications,
+        pos: a.positions
       }, {
-        val: stateB.state,
-        mod: stateB.modifications,
-        pos: stateB.positions
+        val: b.state,
+        mod: b.modifications,
+        pos: b.positions
       });
-      result.content.push({ [MODIFICATIONS_KEY]: result.mod, [POSITIONS_KEY]: result.pos });
-      return MergeableArray.create(result.content)
+      return new MergeableArray(result.val, result.pos, result.mod)
     }
 
-    merge (stateB) {
-      const result = MergeableArray.merge(this, stateB);
+    merge (b) {
+      b = util.deepCopy(b);
+      const result = merge$1({
+        val: this.state,
+        mod: this.modifications,
+        pos: this.positions
+      }, {
+        val: b.state,
+        mod: b.modifications,
+        pos: b.positions
+      });
+
       this.state = result.val;
       this.modifications = result.mod;
       this.positions = result.pos;
+
       return this
     }
   }
