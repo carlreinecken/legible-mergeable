@@ -31,7 +31,7 @@
   }
 
   function newDate (date) {
-    return new Date(date) || new Date()
+    return date ? new Date(date) : new Date()
   }
 
   var util = {
@@ -384,7 +384,7 @@
         util.hasKey(item, MODIFICATIONS_KEY) &&
         util.hasKey(item, POSITIONS_KEY)
       );
-      if (metaIndex > 0) {
+      if (metaIndex !== -1) {
         const metaItem = state.splice(metaIndex, 1)[0];
         modifications = util.parseChangeDates(metaItem[MODIFICATIONS_KEY]);
         positions = positionFunctions.decodeToBase36(metaItem[POSITIONS_KEY]);
@@ -412,6 +412,10 @@
       this.modifications[id] = util.newDate(date);
     }
 
+    /*
+     * @param afterId the element id of the left side of the new element
+     *                set to null if it should be inserted at the beginning
+     */
     insert (element, afterId, date) {
       let afterPosition = null;
       let afterIndex = -1;
@@ -436,6 +440,14 @@
     }
 
     move (id, afterId, date) {
+      const element = this.state.find(item => item[DEFAULT_ID_KEY] === id);
+
+      if (element == null) {
+        throw new LegibleMergeableError('Could not find id ' + id + ' in array.')
+      }
+
+      this.delete(id, date);
+      this.insert(element, afterId, date);
     }
 
     reposition () {
@@ -443,10 +455,27 @@
     }
 
     delete (id, date) {
+      const index = this.state.findIndex(item => item[DEFAULT_ID_KEY] === id);
+      if (index === -1) {
+        throw new LegibleMergeableError('Could not find id ' + id + ' in array.')
+      }
+
+      this.state.splice(index, 1);
+
+      delete this.positions[id];
+      this.modifications[id] = util.newDate(date);
     }
 
     size () {
       return this.state.length
+    }
+
+    /*
+     * Is practical when working with the end of the list and
+     * the id of the last element is needed.
+     */
+    last () {
+      return this.state[this.state.length - 1]
     }
 
     /*

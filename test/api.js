@@ -23,7 +23,9 @@ describe('api', function () {
       })
     })
 
-    it('a mergeable array (position objects)', function () {
+    it('a mergeable array base by constructor')
+
+    it('a mergeable array', function () {
       const date = new Date('2020-09-13').toISOString()
       const list = legibleMergeable.Array()
       const item = {
@@ -159,10 +161,32 @@ describe('api', function () {
       list.insert(item1, null, date)
       list.insert(item2, 44, date)
       list.insert(item3, 44, date)
-      list.push(item4, 11, date)
+      list.push(item4, date)
       list.insert(item5, null, date)
 
       expect(list.base()).to.eql([item5, item1, item3, item2, item4])
+    })
+
+    it('a mergeable array by moving multiple items', function () {
+      const rye = { id: 1, name: 'Rye', season: 'cool' }
+      const wheat = { id: 2, name: 'Wheat', season: 'cool' }
+      const barley = { id: 3, name: 'Baryley', season: 'cool' }
+      const oat = { id: 4, name: 'Oat', season: 'cool' }
+      const millet = { id: 5, name: 'Millet', season: 'warm' }
+      const maize = { id: 6, name: 'Maize', season: 'warm' }
+
+      const grains = legibleMergeable.Array([
+        rye, wheat, barley, oat, millet, maize
+      ])
+
+      grains.move(rye.id, barley.id)
+      grains.move(rye.id, barley.id)
+      grains.move(barley.id, rye.id)
+      grains.move(maize.id, rye.id)
+      grains.move(oat.id, null)
+      grains.move(wheat.id, grains.last().id)
+
+      expect(grains.base()).to.eql([ oat, rye, maize, barley, millet, wheat ])
     })
   })
 

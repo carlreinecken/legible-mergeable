@@ -2,7 +2,7 @@
 const OUTER_RANGE_SIZE_CHAR = 'zzzzzzzzzz'
 const OUTER_RANGE_SIZE = parseInt(OUTER_RANGE_SIZE_CHAR, 36)
 const INNER_RANGE_AMOUNT_MIN = 100
-const INNER_RANGE_SIZE = (OUTER_RANGE_SIZE/2 - 1/2) / INNER_RANGE_AMOUNT_MIN
+const INNER_RANGE_SIZE = (OUTER_RANGE_SIZE / 2 - 0.5) / INNER_RANGE_AMOUNT_MIN
 
 function randomNumber (min, max) {
   const diff = max - min

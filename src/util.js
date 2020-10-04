@@ -15,7 +15,7 @@ function parseChangeDates (changes) {
 }
 
 function newDate (date) {
-  return new Date(date) || new Date()
+  return date ? new Date(date) : new Date()
 }
 
 export default {
