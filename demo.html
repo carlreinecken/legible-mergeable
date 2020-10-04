@@ -33,6 +33,12 @@
                 justify-content: space-between;
             }
 
+            .client .item {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 5px;
+            }
+
             .sendMode > .client input,
             .sendMode > .client button {
                 pointer-events: none;
@@ -82,21 +88,24 @@
                         <button @click="addItem(clientIndex)">Add</button>
                     </div>
 
-                    <div class="item"
-                         v-for="item in client.list.state"
-                         :key="client.name + item.id"
-                         title="item.id">
-                        {{ item.title }}
-                        <button @click="deleteItem(clientIndex, item.id)">X</button>
-                    </div>
+                    <draggable :value="client.list.state" @sort="(change) => onSort(clientIndex, change)">
+                        <div class="item"
+                             v-for="item in client.list.state"
+                             :key="client.name + item.id"
+                             title="item.id">
+                            {{ item.title }}
+                            <button @click="deleteItem(clientIndex, item.id)">X</button>
+                        </div>
+                    </draggable>
                 </div>
             </div>
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.8.4/Sortable.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Vue.Draggable/2.20.0/vuedraggable.umd.min.js"></script>
         <script src="dist/legible-mergeable.js"></script>
         <script>
-/* global legibleMergeable */
 const app = new Vue({
     el: '#app',
     data: {
@@ -110,6 +119,16 @@ const app = new Vue({
     },
 
     methods: {
+        onSort(clientIndex, change) {
+            const base = this.clients[clientIndex].list.base()
+            const id = base[change.oldIndex].id
+            const k = (change.oldIndex > change.newIndex) ? change.newIndex - 1 : change.newIndex
+            const afterId = k === -1 ? null : base[k].id
+
+            console.log('onSort', change.oldIndex, change.newIndex, id, afterId)
+            this.clients[clientIndex].list.move(id, afterId)
+        },
+
         addClient (list) {
             const name = (this.names.length > 0) ? this.names.shift() : prompt('Client Name')
             if (!name) return
