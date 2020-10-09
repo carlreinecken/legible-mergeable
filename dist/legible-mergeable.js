@@ -125,6 +125,10 @@
       this.changes[key] = new Date(date) || new Date();
     }
 
+    id () {
+      return this.state[DEFAULT_ID_KEY]
+    }
+
     size () {
       return Object.keys(this.state).length
     }
@@ -370,7 +374,7 @@
 
   class MergeableArray {
     constructor (state, positions, modifications) {
-      this.state = state;
+      this._setDeserializedState(state);
       this.positions = positions;
       this.modifications = modifications;
     }
@@ -394,21 +398,21 @@
     }
 
     has (id) {
-      return this.state.find(item => item.id === id) != null
+      return this.get(id) != null
     }
 
     get (id) {
-      return util.deepCopy(this.state.find(item => item.id === id))
+      return this.state.find(item => item.id() === id)
     }
 
     push (element, date) {
       const id = element[DEFAULT_ID_KEY];
 
       const prevItem = this.state[this.state.length - 1];
-      const prevPosition = (prevItem) ? this.positions[prevItem[DEFAULT_ID_KEY]] : null;
+      const prevPosition = (prevItem) ? this.positions[prevItem.id()] : null;
       this.positions[id] = positionFunctions.generate(prevPosition, null);
 
-      this.state.push(element);
+      this.state.push(new MergeableObject(element));
       this.modifications[id] = util.newDate(date);
     }
 
@@ -421,26 +425,27 @@
       let afterIndex = -1;
 
       if (afterId != null) {
-        afterIndex = this.state.findIndex(item => item[DEFAULT_ID_KEY] === afterId);
+        afterIndex = this.state.findIndex(item => item.id() === afterId);
         if (afterIndex === -1) {
           throw new LegibleMergeableError('Could not find id ' + afterId + ' in array.')
         }
-        afterPosition = this.positions[this.state[afterIndex][DEFAULT_ID_KEY]];
+        afterPosition = this.positions[this.state[afterIndex].id()];
       }
 
       const beforeElement = this.state[afterIndex + 1];
       const beforePosition = beforeElement != null
-        ? this.positions[beforeElement[DEFAULT_ID_KEY]]
+        ? this.positions[beforeElement.id()]
         : null;
 
       const id = element[DEFAULT_ID_KEY];
+      element = (element instanceof MergeableObject) ? element : new MergeableObject(element);
       this.state.splice(afterIndex + 1, 0, element);
       this.positions[id] = positionFunctions.generate(afterPosition, beforePosition);
       this.modifications[id] = util.newDate(date);
     }
 
     move (id, afterId, date) {
-      const element = this.state.find(item => item[DEFAULT_ID_KEY] === id);
+      const element = this.state.find(item => item.id() === id);
 
       if (element == null) {
         throw new LegibleMergeableError('Could not find id ' + id + ' in array.')
@@ -451,11 +456,11 @@
     }
 
     reposition () {
-      // set new positions for all elements and set all modification dates
+      // TODO: set new positions for all elements and set all modification dates
     }
 
     delete (id, date) {
-      const index = this.state.findIndex(item => item[DEFAULT_ID_KEY] === id);
+      const index = this.state.findIndex(item => item.id() === id);
       if (index === -1) {
         throw new LegibleMergeableError('Could not find id ' + id + ' in array.')
       }
@@ -483,7 +488,8 @@
      * @return the state
      */
     base () {
-      return util.deepCopy(this.state)
+      // TODO: this states
+      return util.deepCopy(this._getSerializedState())
     }
 
     meta () {
@@ -510,7 +516,7 @@
 
     clone () {
       return new MergeableArray(
-        util.deepCopy(this.state),
+        util.deepCopy(this._getSerializedState()),
         util.deepCopy(this.positions),
         util.deepCopy(this.modifications)
       )
@@ -526,13 +532,14 @@
         mod: b.modifications,
         pos: b.positions
       });
+      // TODO: does state need serializing?
       return new MergeableArray(result.val, result.pos, result.mod)
     }
 
     merge (b) {
       b = util.deepCopy(b);
       const result = merge$1({
-        val: this.state,
+        val: this._getSerializedState(),
         mod: this.modifications,
         pos: this.positions
       }, {
@@ -541,11 +548,19 @@
         pos: b.positions
       });
 
-      this.state = result.val;
+      this._setDeserializedState(result.val);
       this.modifications = result.mod;
       this.positions = result.pos;
 
       return this
+    }
+
+    _getSerializedState () {
+      return this.state.map(item => item.dump())
+    }
+
+    _setDeserializedState (items) {
+      this.state = items.map(item => new MergeableObject(item));
     }
   }
 

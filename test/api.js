@@ -184,7 +184,7 @@ describe('api', function () {
       grains.move(barley.id, rye.id)
       grains.move(maize.id, rye.id)
       grains.move(oat.id, null)
-      grains.move(wheat.id, grains.last().id)
+      grains.move(wheat.id, grains.last().id())
 
       expect(grains.base()).to.eql([oat, rye, maize, barley, millet, wheat])
     })

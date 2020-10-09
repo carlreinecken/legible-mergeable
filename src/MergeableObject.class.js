@@ -1,5 +1,5 @@
 import util from './util'
-import { MODIFICATIONS_KEY as CHANGES_KEY } from './constants'
+import { MODIFICATIONS_KEY, DEFAULT_ID_KEY } from './constants'
 import mergeObject from './merge-object'
 
 export default class MergeableObject {
@@ -12,9 +12,9 @@ export default class MergeableObject {
     let changes = {}
     const state = util.deepCopy(object)
 
-    if (util.hasKey(state, CHANGES_KEY)) {
-      changes = util.parseChangeDates(state[CHANGES_KEY])
-      delete state[CHANGES_KEY]
+    if (util.hasKey(state, MODIFICATIONS_KEY)) {
+      changes = util.parseChangeDates(state[MODIFICATIONS_KEY])
+      delete state[MODIFICATIONS_KEY]
     }
 
     return new this(state, changes)
@@ -40,6 +40,10 @@ export default class MergeableObject {
     this.changes[key] = new Date(date) || new Date()
   }
 
+  id () {
+    return this.state[DEFAULT_ID_KEY]
+  }
+
   size () {
     return Object.keys(this.state).length
   }
@@ -59,7 +63,7 @@ export default class MergeableObject {
   dump () {
     return {
       ...this.state,
-      [CHANGES_KEY]: this.changes
+      [MODIFICATIONS_KEY]: this.changes
     }
   }
 
@@ -75,7 +79,7 @@ export default class MergeableObject {
     const result = mergeObject(stateA.state, stateA.changes, stateB.state, stateB.changes)
     return MergeableObject.create({
       ...result.content,
-      [CHANGES_KEY]: result.changes
+      [MODIFICATIONS_KEY]: result.changes
     })
   }
 
