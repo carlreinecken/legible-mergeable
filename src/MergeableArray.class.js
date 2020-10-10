@@ -8,10 +8,13 @@ import MergeableObject from './MergeableObject.class'
 export default class MergeableArray {
   constructor (state, positions, modifications) {
     this._setDeserializedState(state)
-    this.positions = positions
-    this.modifications = modifications
+    this._positions = positions
+    this._modifications = modifications
   }
 
+  /**
+   * Creates a new instance from a base array, with or without a meta element.
+   */
   static create (array) {
     let modifications = {}
     let positions = {}
@@ -42,11 +45,11 @@ export default class MergeableArray {
     const id = element[DEFAULT_ID_KEY]
 
     const prevItem = this.state[this.state.length - 1]
-    const prevPosition = (prevItem) ? this.positions[prevItem.id()] : null
-    this.positions[id] = positionFunctions.generate(prevPosition, null)
+    const prevPosition = (prevItem) ? this._positions[prevItem.id()] : null
+    this._positions[id] = positionFunctions.generate(prevPosition, null)
 
     this.state.push(new MergeableObject(element))
-    this.modifications[id] = util.newDate(date)
+    this._modifications[id] = util.newDate(date)
   }
 
   /*
@@ -62,19 +65,19 @@ export default class MergeableArray {
       if (afterIndex === -1) {
         throw new LegibleMergeableError('Could not find id ' + afterId + ' in array.')
       }
-      afterPosition = this.positions[this.state[afterIndex].id()]
+      afterPosition = this._positions[this.state[afterIndex].id()]
     }
 
     const beforeElement = this.state[afterIndex + 1]
     const beforePosition = beforeElement != null
-      ? this.positions[beforeElement.id()]
+      ? this._positions[beforeElement.id()]
       : null
 
     const id = element[DEFAULT_ID_KEY]
     element = (element instanceof MergeableObject) ? element : new MergeableObject(element)
     this.state.splice(afterIndex + 1, 0, element)
-    this.positions[id] = positionFunctions.generate(afterPosition, beforePosition)
-    this.modifications[id] = util.newDate(date)
+    this._positions[id] = positionFunctions.generate(afterPosition, beforePosition)
+    this._modifications[id] = util.newDate(date)
   }
 
   move (id, afterId, date) {
@@ -100,8 +103,8 @@ export default class MergeableArray {
 
     this.state.splice(index, 1)
 
-    delete this.positions[id]
-    this.modifications[id] = util.newDate(date)
+    delete this._positions[id]
+    this._modifications[id] = util.newDate(date)
   }
 
   size () {
@@ -126,8 +129,8 @@ export default class MergeableArray {
 
   meta () {
     return util.deepCopy({
-      [MODIFICATIONS_KEY]: this.modifications,
-      [POSITIONS_KEY]: positionFunctions.encodeToBase36(this.positions)
+      [MODIFICATIONS_KEY]: this._modifications,
+      [POSITIONS_KEY]: positionFunctions.encodeToBase36(this._positions)
     })
   }
 
@@ -149,22 +152,21 @@ export default class MergeableArray {
   clone () {
     return new MergeableArray(
       util.deepCopy(this._getSerializedState()),
-      util.deepCopy(this.positions),
-      util.deepCopy(this.modifications)
+      util.deepCopy(this._positions),
+      util.deepCopy(this._modifications)
     )
   }
 
   static merge (a, b) {
     const result = mergeArray({
-      val: a.state,
+      val: a._getSerializedState(),
       mod: a.modifications,
       pos: a.positions
     }, {
-      val: b.state,
+      val: b._getSerializedState(),
       mod: b.modifications,
       pos: b.positions
     })
-    // TODO: does state need serializing?
     return new MergeableArray(result.val, result.pos, result.mod)
   }
 
@@ -172,17 +174,17 @@ export default class MergeableArray {
     b = util.deepCopy(b)
     const result = mergeArray({
       val: this._getSerializedState(),
-      mod: this.modifications,
-      pos: this.positions
+      mod: this._modifications,
+      pos: this._positions
     }, {
-      val: b.state,
-      mod: b.modifications,
-      pos: b.positions
+      val: b._getSerializedState(),
+      mod: b._modifications,
+      pos: b._positions
     })
 
     this._setDeserializedState(result.val)
-    this.modifications = result.mod
-    this.positions = result.pos
+    this._modifications = result.mod
+    this._positions = result.pos
 
     return this
   }
