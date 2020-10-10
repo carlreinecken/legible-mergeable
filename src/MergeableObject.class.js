@@ -32,12 +32,12 @@ export default class MergeableObject {
 
   set (key, value, date) {
     this.state[key] = value
-    this.changes[key] = new Date(date) || new Date()
+    this.changes[key] = util.newDate(date)
   }
 
   delete (key, date) {
     delete this.state[key]
-    this.changes[key] = new Date(date) || new Date()
+    this.changes[key] = util.newDate(date)
   }
 
   id () {
@@ -61,6 +61,10 @@ export default class MergeableObject {
    * @return
    */
   dump () {
+    if (Object.keys(this.changes).length === 0) {
+      return this.state
+    }
+
     return {
       ...this.state,
       [MODIFICATIONS_KEY]: this.changes

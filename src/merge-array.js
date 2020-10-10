@@ -85,14 +85,18 @@ export default function merge (docA, docB) {
 
     if (util.hasKey(modifications.inserted, id)) {
       result.val.push(modifications.inserted[id].val)
-      result.pos[id] = modifications.inserted[id].pos
+      if (modifications.inserted[id].pos) {
+        result.pos[id] = modifications.inserted[id].pos
+      }
       result.mod[id] = modifications.inserted[id].mod
       continue
     }
 
     if (util.hasKey(modifications.moved, id)) {
       result.val.push(modifications.moved[id].val)
-      result.pos[id] = modifications.moved[id].pos
+      if (modifications.moved[id].pos) {
+        result.pos[id] = modifications.moved[id].pos
+      }
       result.mod[id] = modifications.moved[id].mod
       continue
     }
@@ -103,16 +107,20 @@ export default function merge (docA, docB) {
     if (!source) continue
 
     result.val.push(input[source].values.get(id))
-    result.pos[id] = input[source].positions[id]
+    if (input[source].positions[id]) {
+      result.pos[id] = input[source].positions[id]
+    }
     if (util.hasKey(input[source].changes, id)) {
       result.mod[id] = input[source].changes[id]
     }
   }
 
-  result.val.sort((a, b) => position.compare(
-    result.pos[a[DEFAULT_ID_KEY]],
-    result.pos[b[DEFAULT_ID_KEY]]
-  ))
+  if (Object.keys(result.pos).length > 0) {
+    result.val.sort((a, b) => position.compare(
+      result.pos[a[DEFAULT_ID_KEY]],
+      result.pos[b[DEFAULT_ID_KEY]]
+    ))
+  }
 
   return result
 }

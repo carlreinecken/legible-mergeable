@@ -33,22 +33,26 @@ export default class MergeableArray {
     return new this(state, positions, modifications)
   }
 
+  state () {
+    return this._state
+  }
+
   has (id) {
     return this.get(id) != null
   }
 
   get (id) {
-    return this.state.find(item => item.id() === id)
+    return this._state.find(item => item.id() === id)
   }
 
   push (element, date) {
     const id = element[DEFAULT_ID_KEY]
 
-    const prevItem = this.state[this.state.length - 1]
+    const prevItem = this._state[this._state.length - 1]
     const prevPosition = (prevItem) ? this._positions[prevItem.id()] : null
     this._positions[id] = positionFunctions.generate(prevPosition, null)
 
-    this.state.push(new MergeableObject(element))
+    this._state.push(MergeableObject.create(element))
     this._modifications[id] = util.newDate(date)
   }
 
@@ -61,27 +65,29 @@ export default class MergeableArray {
     let afterIndex = -1
 
     if (afterId != null) {
-      afterIndex = this.state.findIndex(item => item.id() === afterId)
+      afterIndex = this._state.findIndex(item => item.id() === afterId)
       if (afterIndex === -1) {
         throw new LegibleMergeableError('Could not find id ' + afterId + ' in array.')
       }
-      afterPosition = this._positions[this.state[afterIndex].id()]
+      afterPosition = this._positions[this._state[afterIndex].id()]
     }
 
-    const beforeElement = this.state[afterIndex + 1]
+    const beforeElement = this._state[afterIndex + 1]
     const beforePosition = beforeElement != null
       ? this._positions[beforeElement.id()]
       : null
 
-    const id = element[DEFAULT_ID_KEY]
-    element = (element instanceof MergeableObject) ? element : new MergeableObject(element)
-    this.state.splice(afterIndex + 1, 0, element)
+    if (!(element instanceof MergeableObject)) {
+      element = MergeableObject.create(element)
+    }
+    const id = element.id()
+    this._state.splice(afterIndex + 1, 0, element)
     this._positions[id] = positionFunctions.generate(afterPosition, beforePosition)
     this._modifications[id] = util.newDate(date)
   }
 
   move (id, afterId, date) {
-    const element = this.state.find(item => item.id() === id)
+    const element = this._state.find(item => item.id() === id)
 
     if (element == null) {
       throw new LegibleMergeableError('Could not find id ' + id + ' in array.')
@@ -96,19 +102,19 @@ export default class MergeableArray {
   }
 
   delete (id, date) {
-    const index = this.state.findIndex(item => item.id() === id)
+    const index = this._state.findIndex(item => item.id() === id)
     if (index === -1) {
       throw new LegibleMergeableError('Could not find id ' + id + ' in array.')
     }
 
-    this.state.splice(index, 1)
+    this._state.splice(index, 1)
 
     delete this._positions[id]
     this._modifications[id] = util.newDate(date)
   }
 
   size () {
-    return this.state.length
+    return this._state.length
   }
 
   /*
@@ -116,7 +122,7 @@ export default class MergeableArray {
    * the id of the last element is needed.
    */
   last () {
-    return this.state[this.state.length - 1]
+    return this._state[this._state.length - 1]
   }
 
   /*
@@ -160,18 +166,17 @@ export default class MergeableArray {
   static merge (a, b) {
     const result = mergeArray({
       val: a._getSerializedState(),
-      mod: a.modifications,
-      pos: a.positions
+      mod: a._modifications,
+      pos: a._positions
     }, {
       val: b._getSerializedState(),
-      mod: b.modifications,
-      pos: b.positions
+      mod: b._modifications,
+      pos: b._positions
     })
     return new MergeableArray(result.val, result.pos, result.mod)
   }
 
   merge (b) {
-    b = util.deepCopy(b)
     const result = mergeArray({
       val: this._getSerializedState(),
       mod: this._modifications,
@@ -190,10 +195,10 @@ export default class MergeableArray {
   }
 
   _getSerializedState () {
-    return this.state.map(item => item.dump())
+    return this._state.map(item => item.dump())
   }
 
   _setDeserializedState (items) {
-    this.state = items.map(item => new MergeableObject(item))
+    this._state = items.map(item => MergeableObject.create(item))
   }
 }

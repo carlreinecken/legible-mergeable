@@ -17,10 +17,7 @@ describe('api', function () {
       const item = legibleMergeable.Object(base)
 
       expect(item.base()).to.eql(base)
-      expect(item.dump()).to.eql({
-        ...base,
-        [MODIFICATIONS_KEY]: {}
-      })
+      expect(item.dump()).to.eql(base)
     })
 
     it('a mergeable array base by constructor')
@@ -251,14 +248,24 @@ describe('api', function () {
   it('an empty array')
 
   xit('a modified array with modified objects', function () {
-    const item1 = legibleMergeable.Object({ id: 1, title: 'Buy Flour', done: true })
-    const item2 = legibleMergeable.Object({ id: 2, title: 'Change Lightbulb', done: false })
-    const item3 = legibleMergeable.Object({ id: 3, title: 'Cook spicy meal', done: false })
+    const item1 = { id: 1, title: 'Buy Flour', done: true }
+    const item2 = { id: 2, title: 'Change Lightbulb', done: false }
+    const item3 = { id: 3, title: 'Cook spicy meal', done: false }
 
-    const grains = legibleMergeable.Array([item1, item2, item3])
-    // TODO: you cant deepclone these items
-    // TODO: how does the array class access the id
+    const todosAlice = legibleMergeable.Array([item1, item2, item3])
+    const todosBob = todosAlice.clone()
 
-    expect(grains.base()).to.eql([])
+    todosBob.get(1).set('title', 'Buy Sugar')
+    todosBob.get(3).set('done', true)
+    todosAlice.get(2).set('due', '2030-12-31')
+    todosAlice.delete(3)
+    // console.log('bob', todosBob.dump(), 'alice', todosAlice.dump())
+
+    console.log('static', legibleMergeable.merge(todosAlice, todosBob).dump())
+    console.log('static', legibleMergeable.merge(todosBob, todosAlice).dump())
+    // todosBob.merge(todosAlice)
+    // console.log('bob', todosBob.dump())
+
+    // expect(todos.base()).to.eql([])
   })
 })

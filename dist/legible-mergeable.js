@@ -117,12 +117,12 @@
 
     set (key, value, date) {
       this.state[key] = value;
-      this.changes[key] = new Date(date) || new Date();
+      this.changes[key] = util.newDate(date);
     }
 
     delete (key, date) {
       delete this.state[key];
-      this.changes[key] = new Date(date) || new Date();
+      this.changes[key] = util.newDate(date);
     }
 
     id () {
@@ -146,6 +146,10 @@
      * @return
      */
     dump () {
+      if (Object.keys(this.changes).length === 0) {
+        return this.state
+      }
+
       return {
         ...this.state,
         [MODIFICATIONS_KEY]: this.changes
@@ -340,14 +344,18 @@
 
       if (util.hasKey(modifications.inserted, id)) {
         result.val.push(modifications.inserted[id].val);
-        result.pos[id] = modifications.inserted[id].pos;
+        if (modifications.inserted[id].pos) {
+          result.pos[id] = modifications.inserted[id].pos;
+        }
         result.mod[id] = modifications.inserted[id].mod;
         continue
       }
 
       if (util.hasKey(modifications.moved, id)) {
         result.val.push(modifications.moved[id].val);
-        result.pos[id] = modifications.moved[id].pos;
+        if (modifications.moved[id].pos) {
+          result.pos[id] = modifications.moved[id].pos;
+        }
         result.mod[id] = modifications.moved[id].mod;
         continue
       }
@@ -358,16 +366,20 @@
       if (!source) continue
 
       result.val.push(input[source].values.get(id));
-      result.pos[id] = input[source].positions[id];
+      if (input[source].positions[id]) {
+        result.pos[id] = input[source].positions[id];
+      }
       if (util.hasKey(input[source].changes, id)) {
         result.mod[id] = input[source].changes[id];
       }
     }
 
-    result.val.sort((a, b) => positionFunctions.compare(
-      result.pos[a[DEFAULT_ID_KEY]],
-      result.pos[b[DEFAULT_ID_KEY]]
-    ));
+    if (Object.keys(result.pos).length > 0) {
+      result.val.sort((a, b) => positionFunctions.compare(
+        result.pos[a[DEFAULT_ID_KEY]],
+        result.pos[b[DEFAULT_ID_KEY]]
+      ));
+    }
 
     return result
   }
@@ -400,22 +412,26 @@
       return new this(state, positions, modifications)
     }
 
+    state () {
+      return this._state
+    }
+
     has (id) {
       return this.get(id) != null
     }
 
     get (id) {
-      return this.state.find(item => item.id() === id)
+      return this._state.find(item => item.id() === id)
     }
 
     push (element, date) {
       const id = element[DEFAULT_ID_KEY];
 
-      const prevItem = this.state[this.state.length - 1];
+      const prevItem = this._state[this._state.length - 1];
       const prevPosition = (prevItem) ? this._positions[prevItem.id()] : null;
       this._positions[id] = positionFunctions.generate(prevPosition, null);
 
-      this.state.push(new MergeableObject(element));
+      this._state.push(MergeableObject.create(element));
       this._modifications[id] = util.newDate(date);
     }
 
@@ -428,27 +444,29 @@
       let afterIndex = -1;
 
       if (afterId != null) {
-        afterIndex = this.state.findIndex(item => item.id() === afterId);
+        afterIndex = this._state.findIndex(item => item.id() === afterId);
         if (afterIndex === -1) {
           throw new LegibleMergeableError('Could not find id ' + afterId + ' in array.')
         }
-        afterPosition = this._positions[this.state[afterIndex].id()];
+        afterPosition = this._positions[this._state[afterIndex].id()];
       }
 
-      const beforeElement = this.state[afterIndex + 1];
+      const beforeElement = this._state[afterIndex + 1];
       const beforePosition = beforeElement != null
         ? this._positions[beforeElement.id()]
         : null;
 
-      const id = element[DEFAULT_ID_KEY];
-      element = (element instanceof MergeableObject) ? element : new MergeableObject(element);
-      this.state.splice(afterIndex + 1, 0, element);
+      if (!(element instanceof MergeableObject)) {
+        element = MergeableObject.create(element);
+      }
+      const id = element.id();
+      this._state.splice(afterIndex + 1, 0, element);
       this._positions[id] = positionFunctions.generate(afterPosition, beforePosition);
       this._modifications[id] = util.newDate(date);
     }
 
     move (id, afterId, date) {
-      const element = this.state.find(item => item.id() === id);
+      const element = this._state.find(item => item.id() === id);
 
       if (element == null) {
         throw new LegibleMergeableError('Could not find id ' + id + ' in array.')
@@ -463,19 +481,19 @@
     }
 
     delete (id, date) {
-      const index = this.state.findIndex(item => item.id() === id);
+      const index = this._state.findIndex(item => item.id() === id);
       if (index === -1) {
         throw new LegibleMergeableError('Could not find id ' + id + ' in array.')
       }
 
-      this.state.splice(index, 1);
+      this._state.splice(index, 1);
 
       delete this._positions[id];
       this._modifications[id] = util.newDate(date);
     }
 
     size () {
-      return this.state.length
+      return this._state.length
     }
 
     /*
@@ -483,7 +501,7 @@
      * the id of the last element is needed.
      */
     last () {
-      return this.state[this.state.length - 1]
+      return this._state[this._state.length - 1]
     }
 
     /*
@@ -527,18 +545,17 @@
     static merge (a, b) {
       const result = merge$1({
         val: a._getSerializedState(),
-        mod: a.modifications,
-        pos: a.positions
+        mod: a._modifications,
+        pos: a._positions
       }, {
         val: b._getSerializedState(),
-        mod: b.modifications,
-        pos: b.positions
+        mod: b._modifications,
+        pos: b._positions
       });
       return new MergeableArray(result.val, result.pos, result.mod)
     }
 
     merge (b) {
-      b = util.deepCopy(b);
       const result = merge$1({
         val: this._getSerializedState(),
         mod: this._modifications,
@@ -557,11 +574,11 @@
     }
 
     _getSerializedState () {
-      return this.state.map(item => item.dump())
+      return this._state.map(item => item.dump())
     }
 
     _setDeserializedState (items) {
-      this.state = items.map(item => new MergeableObject(item));
+      this._state = items.map(item => MergeableObject.create(item));
     }
   }
 

@@ -88,13 +88,13 @@
                         <button @click="addItem(clientIndex)">Add</button>
                     </div>
 
-                    <draggable :value="client.list.state" @sort="(change) => onSort(clientIndex, change)">
+                    <draggable :value="client.list.state()" @sort="(change) => onSort(clientIndex, change)">
                         <div class="item"
-                             v-for="item in client.list.state"
-                             :key="client.name + item.id"
-                             title="item.id">
-                            {{ item.title }}
-                            <button @click="deleteItem(clientIndex, item.id)">X</button>
+                             v-for="item in client.list.state()"
+                             :key="client.name + item.id()"
+                             :title="item.id()">
+                            {{ item.get('title') }}
+                            <button @click="deleteItem(clientIndex, item.id())">X</button>
                         </div>
                     </draggable>
                 </div>
@@ -125,8 +125,9 @@ const app = new Vue({
             const k = (change.oldIndex > change.newIndex) ? change.newIndex - 1 : change.newIndex
             const afterId = k === -1 ? null : base[k].id
 
-            console.log('onSort', change.oldIndex, change.newIndex, id, afterId)
+            // console.log('onSort', change.oldIndex, change.newIndex, id, afterId)
             this.clients[clientIndex].list.move(id, afterId)
+            console.log(this.clients[clientIndex].list.meta()['^p'][id])
         },
 
         addClient (list) {
