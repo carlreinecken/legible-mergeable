@@ -195,8 +195,8 @@
       throw new LegibleMergeableError('Could not generate new position, no space available.')
     }
 
-    const prevPosHead = prevPos[0] || POSITION_DEFAULT_MIN;
-    const nextPosHead = nextPos[0] || POSITION_DEFAULT_MAX;
+    const prevPosHead = (prevPos.length > 0) ? prevPos[0] : POSITION_DEFAULT_MIN;
+    const nextPosHead = (nextPos.length > 0) ? nextPos[0] : POSITION_DEFAULT_MAX;
 
     const diff = Math.abs(prevPosHead - nextPosHead);
     let newPos = [prevPosHead];

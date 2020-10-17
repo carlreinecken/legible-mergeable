@@ -84,5 +84,14 @@ describe('position', function () {
       expect(result[1]).to.equal(631)
       expect(typeof result[2]).to.equal('number')
     })
+
+    it('between 0 and a small upperbound', function () {
+      const upperBound = [0, 2000]
+      const result = generate(null, upperBound)
+      expect(result.length).to.equal(3)
+      expect(result[0]).to.equal(0)
+      expect(result[1]).to.equal(0)
+      expect(typeof result[2]).to.equal('number')
+    })
   })
 })

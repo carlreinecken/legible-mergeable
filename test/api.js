@@ -198,6 +198,24 @@ describe('api', function () {
 
       expect(grains.base()).to.eql([wheat])
     })
+
+    it('a mergeable array by moving multiple items to the beginning', function () {
+      const rye = { id: 'qox', name: 'Rye' }
+      const wheat = { id: 'a71', name: 'Wheat' }
+      const barley = { id: '2is', name: 'Barley' }
+
+      const grains = legibleMergeable.Array([rye, wheat, barley])
+
+      grains.move(barley.id, null)
+      grains.move(wheat.id, null)
+      grains.move(rye.id, null)
+
+      expect(grains.base()).to.eql([rye, wheat, barley])
+
+      // The array is only sorted when merging. Which means the positions
+      // could not mean the same as the actual array order.
+      expect(grains.merge(grains).base()).to.eql([rye, wheat, barley])
+    })
   })
 
   describe('merge', function () {
