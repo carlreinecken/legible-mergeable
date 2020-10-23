@@ -92,7 +92,7 @@
   class MergeableObject {
     constructor (state, changes) {
       this.state = state;
-      this.changes = changes;
+      this.changes = util.parseChangeDates(changes);
     }
 
     static create (object) {
@@ -100,7 +100,7 @@
       const state = util.deepCopy(object);
 
       if (util.hasKey(state, MODIFICATIONS_KEY)) {
-        changes = util.parseChangeDates(state[MODIFICATIONS_KEY]);
+        changes = state[MODIFICATIONS_KEY];
         delete state[MODIFICATIONS_KEY];
       }
 
@@ -436,7 +436,7 @@
     constructor (state, positions, modifications) {
       this._setDeserializedState(state);
       this._positions = positions;
-      this._modifications = modifications;
+      this._modifications = util.parseChangeDates(modifications);
     }
 
     /**
@@ -453,15 +453,11 @@
       );
       if (metaIndex !== -1) {
         const metaItem = state.splice(metaIndex, 1)[0];
-        modifications = util.parseChangeDates(metaItem[MODIFICATIONS_KEY]);
+        modifications = metaItem[MODIFICATIONS_KEY];
         positions = positionFunctions.decodeBase36(metaItem[POSITIONS_KEY]);
       }
 
       return new this(state, positions, modifications)
-    }
-
-    state () {
-      return this._state
     }
 
     has (id) {
@@ -550,6 +546,17 @@
      */
     last () {
       return this._state[this._state.length - 1]
+    }
+
+    first () {
+      return this._state[0]
+    }
+
+    /*
+     * Not serialized state with all MergeableObject. Do not change things here!
+     */
+    state () {
+      return this._state
     }
 
     /*

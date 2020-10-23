@@ -35,6 +35,11 @@ export default class MergeableObject {
     this.changes[key] = util.newDate(date)
   }
 
+  use (id) {
+    // IDEA: use javascript proxies to return a getter and setter
+    // to make the use in vue's v-models easier and concise.
+  }
+
   delete (key, date) {
     delete this.state[key]
     this.changes[key] = util.newDate(date)

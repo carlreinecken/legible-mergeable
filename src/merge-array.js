@@ -3,7 +3,7 @@ import { DEFAULT_ID_KEY, MODIFICATIONS_KEY } from './constants'
 import position from './position'
 import mergeObjectFunction from './merge-object'
 
-function foo (object) {
+function parseObject (object) {
   let changes = {}
   const state = util.deepCopy(object)
 
@@ -16,8 +16,8 @@ function foo (object) {
 }
 
 function mergeObjects (a, b) {
-  a = foo(a)
-  b = foo(b)
+  a = parseObject(a)
+  b = parseObject(b)
 
   const merged = mergeObjectFunction(a.state, a.changes, b.state, b.changes)
   if (Object.keys(merged.changes).length === 0) {
