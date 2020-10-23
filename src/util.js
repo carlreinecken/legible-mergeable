@@ -3,6 +3,8 @@ function hasKey (object, key) {
 }
 
 function deepCopy (value) {
+  // TODO: replace with something better performing.
+  //       makes following util function parseChangeDates obsolete.
   return JSON.parse(JSON.stringify(value))
 }
 

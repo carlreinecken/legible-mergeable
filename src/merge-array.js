@@ -1,6 +1,34 @@
 import util from './util'
-import { DEFAULT_ID_KEY } from './constants'
+import { DEFAULT_ID_KEY, MODIFICATIONS_KEY } from './constants'
 import position from './position'
+import mergeObjectFunction from './merge-object'
+
+function foo (object) {
+  let changes = {}
+  const state = util.deepCopy(object)
+
+  if (util.hasKey(state, MODIFICATIONS_KEY)) {
+    changes = util.parseChangeDates(state[MODIFICATIONS_KEY])
+    delete state[MODIFICATIONS_KEY]
+  }
+
+  return { changes, state }
+}
+
+function mergeObjects (a, b) {
+  a = foo(a)
+  b = foo(b)
+
+  const merged = mergeObjectFunction(a.state, a.changes, b.state, b.changes)
+  if (Object.keys(merged.changes).length === 0) {
+    return merged.content
+  }
+
+  return {
+    ...merged.content,
+    [MODIFICATIONS_KEY]: merged.changes
+  }
+}
 
 function getModifications (a, b) {
   const result = {
@@ -20,6 +48,7 @@ function getModifications (a, b) {
     }
 
     // abort if the other lists has a newer change
+    // this is also important to enusre that only the newest deletion is considered
     if (change < (b.changes[id] || null)) {
       continue
     }
@@ -34,7 +63,6 @@ function getModifications (a, b) {
       a.positions[id] !== b.positions[id]
     ) {
       result.moved[id] = {
-        val: a.values.get(id),
         pos: a.positions[id],
         mod: change
       }
@@ -55,15 +83,14 @@ function getAllModifications (a, b) {
   }
 }
 
-function getIdsMap (doc, idKey) {
-  return new Map(doc.map(item => [item[idKey], item]))
+function getIdsMap (doc) {
+  return new Map(doc.map(item => [item[DEFAULT_ID_KEY], item]))
 }
 
 export default function merge (docA, docB) {
-  const result = { val: [], mod: {}, pos: {} }
   const input = {
-    a: { positions: docA.pos, changes: docA.mod, values: getIdsMap(docA.val, DEFAULT_ID_KEY) },
-    b: { positions: docB.pos, changes: docB.mod, values: getIdsMap(docB.val, DEFAULT_ID_KEY) }
+    a: { positions: docA.pos, changes: docA.mod, values: getIdsMap(docA.val) },
+    b: { positions: docB.pos, changes: docB.mod, values: getIdsMap(docB.val) }
   }
 
   const modifications = getAllModifications(input.a, input.b)
@@ -76,6 +103,12 @@ export default function merge (docA, docB) {
     Object.keys(input.b.changes)
   ))]
   // console.log(ids)
+
+  /*
+   * Build result values
+   */
+
+  const result = { val: [], mod: {}, pos: {} }
 
   for (const id of ids) {
     if (util.hasKey(modifications.deleted, id)) {
@@ -93,7 +126,7 @@ export default function merge (docA, docB) {
     }
 
     if (util.hasKey(modifications.moved, id)) {
-      result.val.push(modifications.moved[id].val)
+      result.val.push(mergeObjects(input.a.values.get(id), input.b.values.get(id)))
       if (modifications.moved[id].pos) {
         result.pos[id] = modifications.moved[id].pos
       }
@@ -101,12 +134,22 @@ export default function merge (docA, docB) {
       continue
     }
 
+    /*
+     * No array action:
+     * However the objects are either different or are the same.
+     */
+
     let source
     if (input.a.values.has(id)) source = 'a'
     if (input.b.values.has(id)) source = 'b'
     if (!source) continue
 
-    result.val.push(input[source].values.get(id))
+    if (input.a.values.has(id) && input.b.values.has(id)) {
+      result.val.push(mergeObjects(input.a.values.get(id), input.b.values.get(id)))
+    } else {
+      result.val.push(input[source].values.get(id))
+    }
+
     if (input[source].positions[id]) {
       result.pos[id] = input[source].positions[id]
     }
@@ -114,6 +157,10 @@ export default function merge (docA, docB) {
       result.mod[id] = input[source].changes[id]
     }
   }
+
+  /*
+   * Order elements by position
+   */
 
   if (Object.keys(result.pos).length > 0) {
     result.val.sort((a, b) => position.compare(

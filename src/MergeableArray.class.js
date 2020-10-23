@@ -173,6 +173,7 @@ export default class MergeableArray {
       mod: b._modifications,
       pos: b._positions
     })
+
     return new MergeableArray(result.val, result.pos, result.mod)
   }
 
