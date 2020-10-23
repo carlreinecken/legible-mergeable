@@ -12,7 +12,7 @@
     "lint": "standard",
     "clean": "rm -r dist && mkdir dist",
     "prebuild": "npm run lint && npm run clean",
-    "build": "rollup src/index.js --file dist/legible-mergeable.js --format umd --name legibleMergeable",
+    "build": "rollup src/legibleMergeable.js --file dist/legible-mergeable.js --format umd --name legibleMergeable",
     "postbuild": "terser dist/legible-mergeable.js > dist/legible-mergeable.min.js"
   },
   "standard": {

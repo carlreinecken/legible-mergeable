@@ -122,6 +122,11 @@
       this.changes[key] = util.newDate(date);
     }
 
+    use (id) {
+      // IDEA: use javascript proxies to return a getter and setter
+      // to make the use in vue's v-models easier and concise.
+    }
+
     delete (key, date) {
       delete this.state[key];
       this.changes[key] = util.newDate(date);
@@ -263,7 +268,7 @@
     encodeToBase36
   };
 
-  function foo (object) {
+  function parseObject (object) {
     let changes = {};
     const state = util.deepCopy(object);
 
@@ -276,8 +281,8 @@
   }
 
   function mergeObjects (a, b) {
-    a = foo(a);
-    b = foo(b);
+    a = parseObject(a);
+    b = parseObject(b);
 
     const merged = merge(a.state, a.changes, b.state, b.changes);
     if (Object.keys(merged.changes).length === 0) {
@@ -638,7 +643,7 @@
     }
   }
 
-  var index = {
+  var legibleMergeable = {
     Array (payload) {
       return MergeableArray.create(payload)
     },
@@ -671,6 +676,6 @@
     }
   };
 
-  return index;
+  return legibleMergeable;
 
 })));
