@@ -5,7 +5,7 @@ import mergeObject from './merge-object'
 export default class MergeableObject {
   constructor (state, changes) {
     this.state = state
-    this.changes = changes
+    this.changes = util.parseChangeDates(changes)
   }
 
   static create (object) {
@@ -13,7 +13,7 @@ export default class MergeableObject {
     const state = util.deepCopy(object)
 
     if (util.hasKey(state, MODIFICATIONS_KEY)) {
-      changes = util.parseChangeDates(state[MODIFICATIONS_KEY])
+      changes = state[MODIFICATIONS_KEY]
       delete state[MODIFICATIONS_KEY]
     }
 

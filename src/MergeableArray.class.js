@@ -9,7 +9,7 @@ export default class MergeableArray {
   constructor (state, positions, modifications) {
     this._setDeserializedState(state)
     this._positions = positions
-    this._modifications = modifications
+    this._modifications = util.parseChangeDates(modifications)
   }
 
   /**
@@ -26,15 +26,11 @@ export default class MergeableArray {
     )
     if (metaIndex !== -1) {
       const metaItem = state.splice(metaIndex, 1)[0]
-      modifications = util.parseChangeDates(metaItem[MODIFICATIONS_KEY])
+      modifications = metaItem[MODIFICATIONS_KEY]
       positions = positionFunctions.decodeBase36(metaItem[POSITIONS_KEY])
     }
 
     return new this(state, positions, modifications)
-  }
-
-  state () {
-    return this._state
   }
 
   has (id) {
@@ -123,6 +119,17 @@ export default class MergeableArray {
    */
   last () {
     return this._state[this._state.length - 1]
+  }
+
+  first () {
+    return this._state[0]
+  }
+
+  /*
+   * Not serialized state with all MergeableObject. Do not change things here!
+   */
+  state () {
+    return this._state
   }
 
   /*
