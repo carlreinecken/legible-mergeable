@@ -48,7 +48,10 @@ export default class MergeableArray {
     const prevPosition = (prevItem) ? this._positions[prevItem.id()] : null
     this._positions[id] = positionFunctions.generate(prevPosition, null)
 
-    this._state.push(MergeableObject.create(element))
+    if (!(element instanceof MergeableObject)) {
+      element = MergeableObject.create(element)
+    }
+    this._state.push(element)
     this._modifications[id] = util.newDate(date)
   }
 

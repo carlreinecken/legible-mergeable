@@ -137,7 +137,7 @@ describe('api', function () {
       const item20 = { id: 20, name: 'Soymilk' }
 
       list.push(item9, date)
-      list.push(item11, date)
+      list.push(legibleMergeable.Object(item11), date)
       if (list.has(item9.id)) {
         item20.purchased = item9.purchased
         list.push(item20, date)
