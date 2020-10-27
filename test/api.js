@@ -265,7 +265,7 @@ describe('api', function () {
 
   it('an empty array')
 
-  xit('a modified array with modified objects', function () {
+  it('two modified arrays with modified objects', function () {
     const item1 = { id: 1, title: 'Buy Flour', done: true }
     const item2 = { id: 2, title: 'Change Lightbulb', done: false }
     const item3 = { id: 3, title: 'Cook spicy meal', done: false }
@@ -273,17 +273,22 @@ describe('api', function () {
     const todosAlice = legibleMergeable.Array([item1, item2, item3])
     const todosBob = todosAlice.clone()
 
-    todosBob.get(1).set('title', 'Buy Sugar')
-    todosBob.get(3).set('done', true)
-    todosAlice.get(2).set('due', '2030-12-31')
-    todosAlice.delete(3)
-    // console.log('bob', todosBob.dump(), 'alice', todosAlice.dump())
+    const date = (new Date('2020-10-27')).toISOString()
 
-    console.log('static', legibleMergeable.merge(todosAlice, todosBob).dump())
-    console.log('static', legibleMergeable.merge(todosBob, todosAlice).dump())
-    // todosBob.merge(todosAlice)
-    // console.log('bob', todosBob.dump())
+    todosBob.get(1).set('title', 'Buy Sugar', date)
+    todosBob.get(3).set('done', true, date)
+    todosAlice.get(2).set('due', '2030-12-31', date)
+    todosAlice.delete(3, date)
 
-    // expect(todos.base()).to.eql([])
+    const expected = [
+      { id: 1, title: 'Buy Sugar', done: true, [MODIFICATIONS_KEY]: { title: date } },
+      { id: 2, title: 'Change Lightbulb', done: false, due: '2030-12-31', [MODIFICATIONS_KEY]: { due: date } }
+    ]
+
+    todosBob.merge(todosAlice)
+    todosAlice.merge(todosBob)
+
+    expect(todosBob.base()).to.eql(expected)
+    expect(todosAlice.base()).to.eql(expected)
   })
 })
