@@ -43,6 +43,13 @@
     newDate
   };
 
+  class LegibleMergeableError extends Error {
+    constructor (message) {
+      super(message);
+      this.name = 'LegibleMergeableError';
+    }
+  }
+
   function merge (docA, changesA, docB, changesB) {
     const changes = { a: changesA, b: changesB };
     const resultChanges = {};
@@ -118,6 +125,10 @@
     }
 
     set (key, value, date) {
+      if (key === DEFAULT_ID_KEY) {
+        throw new LegibleMergeableError('You can not modify the identifier property "' + DEFAULT_ID_KEY + '".')
+      }
+
       this.state[key] = value;
       this.changes[key] = util.newDate(date);
     }
@@ -184,13 +195,6 @@
       this.state = result.content;
       this.changes = result.changes;
       return this
-    }
-  }
-
-  class LegibleMergeableError extends Error {
-    constructor (message) {
-      super(message);
-      this.name = 'LegibleMergeableError';
     }
   }
 
@@ -480,7 +484,10 @@
       const prevPosition = (prevItem) ? this._positions[prevItem.id()] : null;
       this._positions[id] = positionFunctions.generate(prevPosition, null);
 
-      this._state.push(MergeableObject.create(element));
+      if (!(element instanceof MergeableObject)) {
+        element = MergeableObject.create(element);
+      }
+      this._state.push(element);
       this._modifications[id] = util.newDate(date);
     }
 

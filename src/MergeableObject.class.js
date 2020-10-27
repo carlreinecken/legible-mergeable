@@ -1,5 +1,6 @@
 import util from './util'
 import { MODIFICATIONS_KEY, DEFAULT_ID_KEY } from './constants'
+import LegibleMergeableError from './LegibleMergeableError'
 import mergeObject from './merge-object'
 
 export default class MergeableObject {
@@ -31,6 +32,10 @@ export default class MergeableObject {
   }
 
   set (key, value, date) {
+    if (key === DEFAULT_ID_KEY) {
+      throw new LegibleMergeableError('You can not modify the identifier property "' + DEFAULT_ID_KEY + '".')
+    }
+
     this.state[key] = value
     this.changes[key] = util.newDate(date)
   }

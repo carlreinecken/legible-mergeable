@@ -87,6 +87,18 @@ describe('api', function () {
       expect(changes.id).to.be.undefined
     })
 
+    it('a mergeable objects id', function () {
+      const item2 = { id: 2, title: 'Change Lightbulb' }
+      const item3 = { id: 3, title: 'Cook spicy meal' }
+      const todosAlice = legibleMergeable.Array([item2, item3])
+
+      try {
+        todosAlice.get(2).set('id', 1)
+      } catch (error) {
+        expect(error.message).to.contain('identifier property')
+      }
+    })
+
     it('a mergeable object with changes', function () {
       const date = new Date('2020-09-06')
       const original = {
