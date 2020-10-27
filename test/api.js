@@ -87,7 +87,38 @@ describe('api', function () {
       expect(changes.id).to.be.undefined
     })
 
-    it('a mergeable objects id', function () {
+    it('a mergeable object with the proxy via the use getter', function () {
+      const item = legibleMergeable.Object({
+        id: 7,
+        name: 'Oatmilk',
+        price: 140
+      })
+
+      item.use.price = 42
+      item.use.isOpen = true
+      delete item.use.name
+
+      const dump = item.dump()
+      const changes = dump[MODIFICATIONS_KEY]
+      delete dump[MODIFICATIONS_KEY]
+
+      const expected = {
+        id: 7,
+        price: 42,
+        isOpen: true
+      }
+
+      expect(dump).to.eql(expected)
+      expect(item.use.isOpen).to.eql(true)
+      expect(item.use.price).to.eql(42)
+      expect(item.use.name).to.be.undefined
+      expect(changes.isOpen.getTime()).to.be.not.null
+      expect(changes.price.getTime()).to.be.not.null
+      expect(changes.name.getTime()).to.be.not.null
+      expect(changes.id).to.be.undefined
+    })
+
+    it('changing id', function () {
       const item2 = { id: 2, title: 'Change Lightbulb' }
       const item3 = { id: 3, title: 'Cook spicy meal' }
       const todosAlice = legibleMergeable.Array([item2, item3])

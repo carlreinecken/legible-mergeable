@@ -4,30 +4,30 @@ import LegibleMergeableError from './LegibleMergeableError'
 import mergeObject from './merge-object'
 
 export default class MergeableObject {
-  constructor (state, changes) {
-    this.state = state
-    this.changes = util.parseChangeDates(changes)
+  constructor (state, modifications) {
+    this._state = state
+    this._modifications = util.parseChangeDates(modifications)
   }
 
   static create (object) {
-    let changes = {}
+    let modifications = {}
     const state = util.deepCopy(object)
 
     if (util.hasKey(state, MODIFICATIONS_KEY)) {
-      changes = state[MODIFICATIONS_KEY]
+      modifications = state[MODIFICATIONS_KEY]
       delete state[MODIFICATIONS_KEY]
     }
 
-    return new this(state, changes)
+    return new this(state, modifications)
   }
 
   has (key) {
-    return util.hasKey(this.state, key)
+    return util.hasKey(this._state, key)
   }
 
   get (key) {
     if (this.has(key)) {
-      return this.state[key]
+      return this._state[key]
     }
   }
 
@@ -36,34 +36,55 @@ export default class MergeableObject {
       throw new LegibleMergeableError('You can not modify the identifier property "' + DEFAULT_ID_KEY + '".')
     }
 
-    this.state[key] = value
-    this.changes[key] = util.newDate(date)
-  }
-
-  use (id) {
-    // IDEA: use javascript proxies to return a getter and setter
-    // to make the use in vue's v-models easier and concise.
+    this._state[key] = value
+    this._modifications[key] = util.newDate(date)
   }
 
   delete (key, date) {
-    delete this.state[key]
-    this.changes[key] = util.newDate(date)
-  }
-
-  id () {
-    return this.state[DEFAULT_ID_KEY]
-  }
-
-  size () {
-    return Object.keys(this.state).length
+    delete this._state[key]
+    this._modifications[key] = util.newDate(date)
   }
 
   /*
-   * The state without the changes, it's the "pure" document
+   * Returns a proxy to make it possible to directly work on the state.
+   * Useful for e.g. the vue v-model.
+   */
+  get use () {
+    return new Proxy(this, {
+      get (target, prop) {
+        return target._state[prop]
+      },
+
+      set (target, prop, value) {
+        target.set(prop, value)
+        return true
+      },
+
+      deleteProperty (target, prop) {
+        target.delete(prop)
+        return true
+      }
+    })
+  }
+
+  id () {
+    return this._state[DEFAULT_ID_KEY]
+  }
+
+  size () {
+    return Object.keys(this._state).length
+  }
+
+  /*
+   * The state without the modifications, it's the "pure" document
    * @return the state
    */
   base () {
-    return util.deepCopy(this.state)
+    return util.deepCopy(this._state)
+  }
+
+  meta () {
+    return { [MODIFICATIONS_KEY]: { ...this._modifications } }
   }
 
   /*
@@ -71,13 +92,13 @@ export default class MergeableObject {
    * @return
    */
   dump () {
-    if (Object.keys(this.changes).length === 0) {
-      return this.state
+    if (Object.keys(this._modifications).length === 0) {
+      return { ...this._state }
     }
 
     return {
-      ...this.state,
-      [MODIFICATIONS_KEY]: this.changes
+      ...this._state,
+      [MODIFICATIONS_KEY]: this._modifications
     }
   }
 
@@ -86,11 +107,11 @@ export default class MergeableObject {
   }
 
   clone () {
-    return new MergeableObject(util.deepCopy(this.state), util.deepCopy(this.changes))
+    return new MergeableObject(util.deepCopy(this._state), util.deepCopy(this._modifications))
   }
 
   static merge (stateA, stateB) {
-    const result = mergeObject(stateA.state, stateA.changes, stateB.state, stateB.changes)
+    const result = mergeObject(stateA._state, stateA._modifications, stateB._state, stateB._modifications)
     return MergeableObject.create({
       ...result.content,
       [MODIFICATIONS_KEY]: result.changes
@@ -98,9 +119,9 @@ export default class MergeableObject {
   }
 
   merge (stateB) {
-    const result = mergeObject(this.state, this.changes, stateB.state, stateB.changes)
-    this.state = result.content
-    this.changes = result.changes
+    const result = mergeObject(this._state, this._modifications, stateB._state, stateB._modifications)
+    this._state = result.content
+    this._modifications = result.changes
     return this
   }
 }

@@ -129,10 +129,11 @@ export default class MergeableArray {
   }
 
   /*
-   * Not serialized state with all MergeableObject. Do not change things here!
+   * Not serialized state with all MergeableObject. Only manipulate the objects
+   * with this, changes to the array are not persisted.
    */
   state () {
-    return this._state
+    return [...this._state]
   }
 
   /*
