@@ -22,6 +22,14 @@ export default {
     }
   },
 
+  isArray (array) {
+    return array instanceof MergeableArray
+  },
+
+  isObject (object) {
+    return object instanceof MergeableObject
+  },
+
   get _mergeFunction () {
     return { mergeArray, mergeObject }
   },

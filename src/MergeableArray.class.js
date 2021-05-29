@@ -1,5 +1,5 @@
 import util from './util'
-import { MODIFICATIONS_KEY, POSITIONS_KEY, DEFAULT_ID_KEY } from './constants'
+import { MODIFICATIONS_KEY, POSITIONS_KEY } from './constants'
 import mergeArray from './merge-array'
 import positionFunctions from './position'
 import LegibleMergeableError from './LegibleMergeableError'
@@ -42,16 +42,17 @@ export default class MergeableArray {
   }
 
   push (element, date) {
-    const id = element[DEFAULT_ID_KEY]
-
     const prevItem = this._state[this._state.length - 1]
     const prevPosition = (prevItem) ? this._positions[prevItem.id()] : null
-    this._positions[id] = positionFunctions.generate(prevPosition, null)
 
     if (!(element instanceof MergeableObject)) {
       element = MergeableObject.create(element)
     }
+
     this._state.push(element)
+
+    const id = element.id()
+    this._positions[id] = positionFunctions.generate(prevPosition, null)
     this._modifications[id] = util.newDate(date)
   }
 
