@@ -11,13 +11,13 @@ const CHANGES_KEY = legibleMergeable.KEY.MODIFICATIONS
 function merge (docA, docB) {
   if (typeof docA === 'object') {
     const result = legibleMergeable._mergeFunction.mergeObject(docA, docA[CHANGES_KEY], docB, docB[CHANGES_KEY])
-    return { ...result.content, [CHANGES_KEY]: result.changes }
+    return { ...result.state, [CHANGES_KEY]: result.modifications }
   }
 }
 
-function parseChangeDates (changes) {
-  return Object.keys(changes).reduce((acc, key) => {
-    return { ...acc, [key]: new Date(changes[key]) }
+function parseChangeDates (modifications) {
+  return Object.keys(modifications).reduce((acc, key) => {
+    return { ...acc, [key]: new Date(modifications[key]) }
   }, {})
 }
 

@@ -20,9 +20,14 @@ function newDate (date) {
   return date ? new Date(date) : new Date()
 }
 
+function uniquenizeArray (array) {
+  return [...new Set(array)]
+}
+
 export default {
   hasKey,
   deepCopy,
   parseChangeDates,
-  newDate
+  newDate,
+  uniquenizeArray
 }

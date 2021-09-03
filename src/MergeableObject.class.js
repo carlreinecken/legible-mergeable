@@ -107,16 +107,17 @@ export default class MergeableObject {
 
   static merge (stateA, stateB) {
     const result = mergeObject(stateA._state, stateA._modifications, stateB._state, stateB._modifications)
+
     return MergeableObject.create({
-      ...result.content,
-      [MODIFICATIONS_KEY]: result.changes
+      ...result.state,
+      [MODIFICATIONS_KEY]: result.modifications
     })
   }
 
   merge (stateB) {
     const result = mergeObject(this._state, this._modifications, stateB._state, stateB._modifications)
-    this._state = result.content
-    this._modifications = result.changes
+    this._state = result.state
+    this._modifications = result.modifications
     return this
   }
 }

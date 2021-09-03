@@ -1,47 +1,56 @@
 import util from './util'
 
-export default function merge (docA, changesA, docB, changesB) {
-  const changes = { a: changesA, b: changesB }
-  const resultChanges = {}
-  const result = {}
+export default function merge (stateA, modificationsA, stateB, modificationsB) {
+  const modifications = { a: modificationsA, b: modificationsB, result: {} }
+  const state = { a: stateA, b: stateB, result: {} }
 
-  const properties = [...new Set([].concat(
-    Object.keys(docA),
-    Object.keys(changes.a),
-    Object.keys(docB),
-    Object.keys(changes.b)
-  ))]
+  const properties = util.uniquenizeArray([].concat(
+    Object.keys(state.a),
+    Object.keys(modifications.a),
+    Object.keys(state.b),
+    Object.keys(modifications.b)
+  ))
 
   for (const prop of properties) {
-    const aChangeAt = changes.a[prop] ? new Date(changes.a[prop]) : null
-    const bChangeAt = changes.b[prop] ? new Date(changes.b[prop]) : null
+    const aChangedAt = modifications.a[prop] ? new Date(modifications.a[prop]) : null
+    const bChangedAt = modifications.b[prop] ? new Date(modifications.b[prop]) : null
 
-    if (aChangeAt > bChangeAt) {
-      if (util.hasKey(docA, prop)) {
-        result[prop] = docA[prop]
-      }
-      resultChanges[prop] = aChangeAt
-    } else if (aChangeAt < bChangeAt) {
-      if (util.hasKey(docB, prop)) {
-        result[prop] = docB[prop]
-      }
-      resultChanges[prop] = bChangeAt
-    } else {
-      if (util.hasKey(docA, prop)) {
-        result[prop] = docA[prop]
-      } else if (util.hasKey(docB, prop)) {
-        result[prop] = docB[prop]
+    if (aChangedAt > bChangedAt) {
+      if (util.hasKey(state.a, prop)) {
+        state.result[prop] = state.a[prop]
       }
 
-      if (!util.hasKey(resultChanges, prop)) {
-        if (util.hasKey(changes.a, prop)) {
-          resultChanges[prop] = aChangeAt
-        } else if (util.hasKey(changes.b, prop)) {
-          resultChanges[prop] = bChangeAt
-        }
+      modifications.result[prop] = aChangedAt
+
+      continue
+    }
+
+    if (aChangedAt < bChangedAt) {
+      if (util.hasKey(state.b, prop)) {
+        state.result[prop] = state.b[prop]
       }
+
+      modifications.result[prop] = bChangedAt
+
+      continue
+    }
+
+    if (util.hasKey(state.a, prop)) {
+      state.result[prop] = state.a[prop]
+    } else if (util.hasKey(state.b, prop)) {
+      state.result[prop] = state.b[prop]
+    }
+
+    if (util.hasKey(modifications.result, prop)) {
+      continue
+    }
+
+    if (util.hasKey(modifications.a, prop)) {
+      modifications.result[prop] = aChangedAt
+    } else if (util.hasKey(modifications.b, prop)) {
+      modifications.result[prop] = bChangedAt
     }
   }
 
-  return { content: result, changes: resultChanges }
+  return { state: state.result, modifications: modifications.result }
 }
