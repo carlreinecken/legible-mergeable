@@ -96,7 +96,7 @@
     return { state: state.result, modifications: modifications.result }
   }
 
-  class MergeableObject {
+  class legibleMergeable {
     constructor (state, modifications) {
       this._state = state;
       this._modifications = util.parseChangeDates(modifications);
@@ -196,16 +196,14 @@
     }
 
     clone () {
-      return new MergeableObject(util.deepCopy(this._state), util.deepCopy(this._modifications))
+      // eslint-disable-next-line new-cap
+      return new legibleMergeable(util.deepCopy(this._state), util.deepCopy(this._modifications))
     }
 
     static merge (stateA, stateB) {
       const result = merge(stateA._state, stateA._modifications, stateB._state, stateB._modifications);
 
-      return MergeableObject.create({
-        ...result.state,
-        [MODIFICATIONS_KEY]: result.modifications
-      })
+      return new this(util.deepCopy(result.state), result.modifications)
     }
 
     merge (stateB) {
@@ -214,33 +212,17 @@
       this._modifications = result.modifications;
       return this
     }
-  }
 
-  var legibleMergeable = {
-    Object (payload) {
-      return MergeableObject.create(payload)
-    },
+    static get _mergeFunction () {
+      return merge
+    }
 
-    merge (stateA, stateB) {
-      if (stateA instanceof MergeableObject && stateB instanceof MergeableObject) {
-        return MergeableObject.merge(stateA, stateB)
-      }
-    },
-
-    isObject (object) {
-      return object instanceof MergeableObject
-    },
-
-    get _mergeFunction () {
-      return { mergeObject: merge }
-    },
-
-    get KEY () {
+    static get KEY () {
       return {
         MODIFICATIONS: MODIFICATIONS_KEY
       }
     }
-  };
+  }
 
   return legibleMergeable;
 

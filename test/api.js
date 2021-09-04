@@ -13,7 +13,7 @@ describe('api', function () {
         price: 140
       }
 
-      const item = legibleMergeable.Object(base)
+      const item = legibleMergeable.create(base)
 
       expect(item.base()).to.eql(base)
       expect(item.dump()).to.eql(base)
@@ -29,7 +29,7 @@ describe('api', function () {
         }
       }
 
-      const item = legibleMergeable.Object(original)
+      const item = legibleMergeable.create(original)
       expect(item.dump()).to.eql(original)
 
       delete original[MODIFICATIONS_KEY]
@@ -40,7 +40,7 @@ describe('api', function () {
   describe('manipulate', function () {
     it('a mergeable object', function () {
       const date = new Date()
-      const item = legibleMergeable.Object({
+      const item = legibleMergeable.create({
         id: 1,
         name: 'Oatmilk',
         price: 140
@@ -68,7 +68,7 @@ describe('api', function () {
     })
 
     it('a mergeable object with the proxy via the use getter', function () {
-      const item = legibleMergeable.Object({
+      const item = legibleMergeable.create({
         id: 7,
         name: 'Oatmilk',
         price: 140
@@ -111,7 +111,7 @@ describe('api', function () {
           price: new Date('2020-09-01')
         }
       }
-      const item = legibleMergeable.Object(original)
+      const item = legibleMergeable.create(original)
 
       if (item.get('price') > 200) {
         item.set('name', 'Almondmilk', date)
@@ -143,7 +143,7 @@ describe('api', function () {
 
   describe('merge', function () {
     it('a cloned and changed object', function () {
-      const replicaA = legibleMergeable.Object({
+      const replicaA = legibleMergeable.create({
         name: 'Oatmilk',
         price: 120,
         isCold: true,

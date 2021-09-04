@@ -2,22 +2,15 @@ const legibleMergeable = require('../dist/legible-mergeable.js')
 const expect = require('chai').expect
 const CHANGES_KEY = legibleMergeable.KEY.MODIFICATIONS
 
-/*
- * This wrapper function protects me to change hundreds of lines of TEST code.
- * This merge functions/tests were not supposed to handle the high level API.
- * It's completely unecessary to include the _changes inside
- * the arrays and objects themself. #sorrynotsorry
- */
 function merge (docA, docB) {
-  if (typeof docA === 'object') {
-    const result = legibleMergeable._mergeFunction.mergeObject(docA, docA[CHANGES_KEY], docB, docB[CHANGES_KEY])
-    return { ...result.state, [CHANGES_KEY]: result.modifications }
-  }
+  const result = legibleMergeable._mergeFunction(docA, docA[CHANGES_KEY], docB, docB[CHANGES_KEY])
+  return { ...result.state, [CHANGES_KEY]: result.modifications }
 }
 
 function parseChangeDates (modifications) {
   return Object.keys(modifications).reduce((acc, key) => {
-    return { ...acc, [key]: new Date(modifications[key]) }
+    acc[key] = new Date(modifications[key])
+    return acc
   }, {})
 }
 
