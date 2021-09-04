@@ -7,7 +7,7 @@ function merge (docA, docB) {
   return { ...result.state, [CHANGES_KEY]: result.modifications }
 }
 
-function parseChangeDates (modifications) {
+function parseDateValuesInObject (modifications) {
   return Object.keys(modifications).reduce((acc, key) => {
     acc[key] = new Date(modifications[key])
     return acc
@@ -21,7 +21,7 @@ describe('merge objects', function () {
       age: 22,
       hungry: false,
       pet: 'pig',
-      [CHANGES_KEY]: parseChangeDates({ hungry: '2020-07-14', pet: '2020-09-01' })
+      [CHANGES_KEY]: parseDateValuesInObject({ hungry: '2020-07-14', pet: '2020-09-01' })
     }
 
     const docB = {
@@ -29,7 +29,7 @@ describe('merge objects', function () {
       age: 44,
       hungry: null,
       pet: 'dog',
-      [CHANGES_KEY]: parseChangeDates({ age: '2020-07-02', hungry: '2020-07-02', pet: '2020-08-31' })
+      [CHANGES_KEY]: parseDateValuesInObject({ age: '2020-07-02', hungry: '2020-07-02', pet: '2020-08-31' })
     }
 
     const expected = {
@@ -37,7 +37,7 @@ describe('merge objects', function () {
       age: 44,
       hungry: false,
       pet: 'pig',
-      [CHANGES_KEY]: parseChangeDates({ hungry: '2020-07-14', pet: '2020-09-01', age: '2020-07-02' })
+      [CHANGES_KEY]: parseDateValuesInObject({ hungry: '2020-07-14', pet: '2020-09-01', age: '2020-07-02' })
     }
 
     expect(merge(docA, docB)).to.eql(expected)
@@ -53,13 +53,13 @@ describe('merge objects', function () {
       name: 'gustav',
       age: 13,
       pet: 'dog',
-      [CHANGES_KEY]: parseChangeDates({ name: '2020-08-09', pet: '2020-08-31' })
+      [CHANGES_KEY]: parseDateValuesInObject({ name: '2020-08-09', pet: '2020-08-31' })
     }
 
     const expected = {
       name: 'gustav',
       age: 13,
-      [CHANGES_KEY]: parseChangeDates({ name: '2020-08-09', pet: '2020-09-01' })
+      [CHANGES_KEY]: parseDateValuesInObject({ name: '2020-08-09', pet: '2020-09-01' })
     }
 
     expect(merge(docA, docB)).to.eql(expected)
@@ -74,7 +74,7 @@ describe('merge objects', function () {
       age: 42,
       hungry: false,
       pet: 'pig',
-      [CHANGES_KEY]: parseChangeDates({ hungry: '2020-07-14', pet: '2020-06-30' })
+      [CHANGES_KEY]: parseDateValuesInObject({ hungry: '2020-07-14', pet: '2020-06-30' })
     }
 
     const docB = {
@@ -82,7 +82,7 @@ describe('merge objects', function () {
       age: 42,
       hungry: false,
       pet: 'goat',
-      [CHANGES_KEY]: parseChangeDates({ hungry: '2020-07-02', pet: '2020-07-24' })
+      [CHANGES_KEY]: parseDateValuesInObject({ hungry: '2020-07-02', pet: '2020-07-24' })
     }
 
     const docC = {
@@ -98,7 +98,7 @@ describe('merge objects', function () {
       age: 19,
       hungry: false,
       pet: 'goat',
-      [CHANGES_KEY]: parseChangeDates({ age: '2020-07-02', hungry: '2020-07-14', pet: '2020-07-24' })
+      [CHANGES_KEY]: parseDateValuesInObject({ age: '2020-07-02', hungry: '2020-07-14', pet: '2020-07-24' })
     }
 
     expect(merge(docA, merge(docB, docC))).to.eql(expected)

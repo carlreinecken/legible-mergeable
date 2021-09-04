@@ -11,18 +11,20 @@
     return Object.prototype.hasOwnProperty.call(object, key)
   }
 
+  function isObject (object) {
+    return Object.prototype.toString.call(object) === '[object Object]'
+  }
+
   function deepCopy (value) {
     // TODO: replace with something better performing.
-    //       makes following util function parseChangeDates obsolete.
+    //       makes following util function parseDateValuesInObject obsolete.
     return JSON.parse(JSON.stringify(value))
   }
 
-  function parseChangeDates (changes) {
-    const result = {};
-    for (const [key, value] of Object.entries(changes)) {
-      result[key] = new Date(value);
-    }
-    return result
+  function parseDateValuesInObject (changes) {
+    return Object.keys(changes).reduce((acc, key) => {
+      return ((acc[key] = new Date(changes[key])), acc)
+    }, {})
   }
 
   function newDate (date) {
@@ -33,12 +35,24 @@
     return [...new Set(array)]
   }
 
+  function arrayToObject (array, customIndex) {
+    return array.reduce((acc, value, i) => {
+      const key = customIndex == null ? i : customIndex;
+
+      acc[value[key]] = value;
+
+      return acc
+    }, {})
+  }
+
   var util = {
     hasKey,
+    isObject,
     deepCopy,
-    parseChangeDates,
+    parseDateValuesInObject,
     newDate,
-    uniquenizeArray
+    uniquenizeArray,
+    arrayToObject
   };
 
   function merge (stateA, modificationsA, stateB, modificationsB) {
@@ -98,8 +112,17 @@
 
   class legibleMergeable {
     constructor (state, modifications) {
-      this._state = state;
-      this._modifications = util.parseChangeDates(modifications);
+      this._state = {};
+
+      for (const [identifier, property] of Object.entries(state)) {
+        if (util.isObject(property) && util.isObject(property[MODIFICATIONS_KEY])) {
+          this._state[identifier] = legibleMergeable.create(property);
+        } else {
+          this._state[identifier] = property;
+        }
+      }
+
+      this._modifications = util.parseDateValuesInObject(modifications);
     }
 
     static create (object) {
@@ -118,10 +141,12 @@
       return util.hasKey(this._state, key)
     }
 
-    get (key) {
+    get (key, fallback) {
       if (this.has(key)) {
         return this._state[key]
       }
+
+      return fallback
     }
 
     set (key, value, date) {
@@ -166,10 +191,9 @@
 
     /*
      * The state without the modifications, it's the "pure" document
-     * @return the state
      */
     base () {
-      return util.deepCopy(this._state)
+      return this._getRecursiveState(property => property.base())
     }
 
     meta () {
@@ -177,16 +201,11 @@
     }
 
     /*
-     * Dumps the object as native value
-     * @return
+     * Dumps the object as native simple object
      */
     dump () {
-      if (Object.keys(this._modifications).length === 0) {
-        return { ...this._state }
-      }
-
       return {
-        ...this._state,
+        ...this._getRecursiveState(property => property.dump()),
         [MODIFICATIONS_KEY]: this._modifications
       }
     }
@@ -195,9 +214,13 @@
       return JSON.stringify(this.dump())
     }
 
+    toJSON () {
+      return this.dump()
+    }
+
     clone () {
       // eslint-disable-next-line new-cap
-      return new legibleMergeable(util.deepCopy(this._state), util.deepCopy(this._modifications))
+      return new legibleMergeable(util.deepCopy(this._state), { ...this._modifications })
     }
 
     static merge (stateA, stateB) {
@@ -221,6 +244,26 @@
       return {
         MODIFICATIONS: MODIFICATIONS_KEY
       }
+    }
+
+    /**
+     * Gets the state, but if the instance is found it gets
+     * transformed via the given callback
+     */
+    _getRecursiveState (transformInstanceFn) {
+      return Object
+        .entries(this._state)
+        .reduce((result, [identifier, property]) => {
+          if (typeof property !== 'object') {
+            result[identifier] = property;
+          } else if (property instanceof legibleMergeable) {
+            result[identifier] = transformInstanceFn(property);
+          } else {
+            result[identifier] = util.deepCopy(property);
+          }
+
+          return result
+        }, {})
     }
   }
 

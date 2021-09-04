@@ -16,6 +16,8 @@ describe('api', function () {
       const item = legibleMergeable.create(base)
 
       expect(item.base()).to.eql(base)
+
+      base[MODIFICATIONS_KEY] = {}
       expect(item.dump()).to.eql(base)
     })
 
@@ -181,6 +183,73 @@ describe('api', function () {
       expect(changes.price.getTime()).to.equal(date.getTime())
       expect(changes.isCold.getTime()).to.equal((new Date('2020-08-05')).getTime())
       expect(changes.isOpen).to.be.undefined
+    })
+  })
+
+  describe('recursive', function () {
+    const getSample = () => ({
+      7: { uid: 7, name: 'gustav', [MODIFICATIONS_KEY]: {} },
+      foo: {
+        uid: 'foo',
+        age: 8,
+        nested: {
+          list: [1, 2, 4, 8, 16, 32, 64],
+          [MODIFICATIONS_KEY]: { list: new Date('2020-08-05') }
+        },
+        [MODIFICATIONS_KEY]: {}
+      },
+      noMergeable: { uid: 'bar', age: 21 }
+    })
+
+    it('get nested objects', function () {
+      const item = legibleMergeable.create(getSample())
+
+      expect(item.get(7)).to.be.an.instanceof(legibleMergeable)
+      expect(item.get('foo')).to.be.an.instanceof(legibleMergeable)
+      expect(item.get('foo').get('nested')).to.be.an.instanceof(legibleMergeable)
+      expect(item.get('noMergeable')).not.to.be.an.instanceof(legibleMergeable)
+    })
+
+    it('change properties of nested objects', function () {
+      const item = legibleMergeable.create(getSample())
+
+      item.get(7).delete('name')
+      item.get('foo').set('age', 10)
+      item.get('foo').get('nested').set('age', 44)
+
+      expect(item.get(7).get('name')).to.be.undefined
+      expect(item.get('foo').get('age')).to.be.eql(10)
+      expect(item.get('foo').get('nested').get('age')).to.be.eql(44)
+    })
+
+    it('get base', function () {
+      const raw = getSample()
+      const item = legibleMergeable.create(raw)
+
+      const expectedBase = {
+        7: { uid: 7, name: 'gustav' },
+        foo: { uid: 'foo', age: 8, nested: { list: [1, 2, 4, 8, 16, 32, 64] } },
+        noMergeable: { uid: 'bar', age: 21 }
+      }
+
+      expect(item.base()).to.eql(expectedBase).but.to.not.equal(expectedBase)
+    })
+
+    it('get base and dump', function () {
+      const raw = getSample()
+      const item = legibleMergeable.create(raw)
+
+      const expectedDump = raw
+      expectedDump[MODIFICATIONS_KEY] = {}
+
+      expect(item.dump()).to.eql(expectedDump).but.to.not.equal(expectedDump)
+    })
+
+    it('clone', function () {
+      const item = legibleMergeable.create(getSample())
+      const itemClone = item.clone().dump()
+
+      expect(item.dump()).to.eql(itemClone).but.to.not.equal(itemClone)
     })
   })
 })

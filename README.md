@@ -2,11 +2,11 @@
 
 Make an array with simple objects as items conflict-free mergeable. Simple means only JSON datatypes are allowed.
 
-Not for use in production. I use it only for an app for my acquaintances and myself.
+Not for use in production. I use it only in an app for my acquaintances and myself.
 
 It doesn't matter in which order different customized states are applied (associativ, commutive and idompotent), conflicting changes will always be deterministically resolved. It will always prefer the newest change. Currently it uses UTC Timestamps for this, which is flawed and should probably be replaced by some logical clock or hybrid.
 
-The merge will not merge strings, it will "only" merge array additions, movements, deletions and added, deleted and changed properties of the array objects. Currently a deletion of an array object always overwrites any modification inside the object.
+The merge will not merge strings, it will only merge array additions, deletions and added, deleted and changed properties of the array objects. Currently a deletion of an array object always overwrites any modification inside the object.
 
 When exporting the mergeable array or object as JSON it stays an array with objects which have additionally objects or properties and thus stays legible.
 
@@ -28,12 +28,11 @@ This is rather legible, isn't it?
   },
   {
     "^m": { 1: "2020-10-21T10:00:00.000Z", 2: "2020-10-21T10:00:00.000Z" },
-    "^p": { 1: "4ka5n", 2: "ga2ru" }
   }
 ]
 ```
 
-Inside the array and object are properties included for modification dates and positions: `^m` and `^p` respectively.
+Inside the array and object are properties included for modification dates as `^m`.
 
 ## Usage MergeableArray
 
