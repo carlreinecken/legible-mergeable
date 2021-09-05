@@ -4,7 +4,7 @@ function isPropertyMergeable (property) {
   return util.isObject(property) && util.isObject(property.modifications)
 }
 
-export default function merge (stateA, modificationsA, stateB, modificationsB) {
+export default function mergeFunction (stateA, modificationsA, stateB, modificationsB) {
   const input = {
     a: { state: stateA, modifications: modificationsA },
     b: { state: stateB, modifications: modificationsB }
@@ -52,7 +52,7 @@ export default function merge (stateA, modificationsA, stateB, modificationsB) {
 
     // Call the merge function recursively if both properties are mergeables
     if (isPropertyMergeable(input.a.state[prop]) && isPropertyMergeable(input.b.state[prop])) {
-      result.state[prop] = merge(
+      result.state[prop] = mergeFunction(
         input.a.state[prop].state,
         input.a.state[prop].modifications,
         input.b.state[prop].state,

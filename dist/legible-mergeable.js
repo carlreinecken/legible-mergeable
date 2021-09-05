@@ -1,10 +1,8 @@
 (function (global, factory) {
-  typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
-  typeof define === 'function' && define.amd ? define(factory) :
-  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.legibleMergeable = factory());
-}(this, (function () { 'use strict';
-
-  const MODIFICATIONS_KEY = '^m';
+  typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
+  typeof define === 'function' && define.amd ? define(['exports'], factory) :
+  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.legibleMergeable = {}));
+}(this, (function (exports) { 'use strict';
 
   function hasKey (object, key) {
     return Object.prototype.hasOwnProperty.call(object, key)
@@ -31,7 +29,7 @@
     return isObject(property) && isObject(property.modifications)
   }
 
-  function merge (stateA, modificationsA, stateB, modificationsB) {
+  function mergeFunction (stateA, modificationsA, stateB, modificationsB) {
     const input = {
       a: { state: stateA, modifications: modificationsA },
       b: { state: stateB, modifications: modificationsB }
@@ -79,7 +77,7 @@
 
       // Call the merge function recursively if both properties are mergeables
       if (isPropertyMergeable(input.a.state[prop]) && isPropertyMergeable(input.b.state[prop])) {
-        result.state[prop] = merge(
+        result.state[prop] = mergeFunction(
           input.a.state[prop].state,
           input.a.state[prop].modifications,
           input.b.state[prop].state,
@@ -98,76 +96,19 @@
     return result
   }
 
-  /**
-   * Transform a given internal state.
-   * If the instance is found it gets transformed via the given callback
-   */
-  function transformInternalState (state, transformInstanceFn) {
-    return Object
-      .entries(state)
-      .reduce((result, [identifier, property]) => {
-        if (typeof property !== 'object') {
-          result[identifier] = property;
-        } else if (property instanceof legibleMergeable) {
-          result[identifier] = transformInstanceFn(property);
-        } else {
-          result[identifier] = deepCopy(property);
-        }
-
-        return result
-      }, {})
-  }
-
-  /**
-   * Transform a given dumped (raw) object.
-   * If the instance is found it gets transformed via the given callback
-   */
-  function transformDump (dump, transformInstanceFn) {
-    return Object
-      .entries(dump)
-      .reduce((result, [identifier, property]) => {
-        if (isObject(property) && isObject(property[MODIFICATIONS_KEY])) {
-          result[identifier] = transformInstanceFn(property);
-        } else {
-          result[identifier] = property;
-        }
-
-        return result
-      }, {})
-  }
-
-  function splitIntoStateAndModifications (dump) {
-    let modifications = {};
-    const state = deepCopy(dump);
-
-    if (hasKey(state, MODIFICATIONS_KEY)) {
-      modifications = state[MODIFICATIONS_KEY];
-      delete state[MODIFICATIONS_KEY];
+  class Mergeable {
+    static get MODIFICATIONS_KEY () {
+      return '^m'
     }
 
-    return { modifications, state }
-  }
-
-  // export class legibleMergeableN {
-  //   // TODO: move only static methods in here. so the other class can be PascalCase
-  //   static create (dump) {
-  //     const { state, modifications } = splitIntoStateAndModifications(dump)
-
-  //     return new legibleMergeable(state, modifications)
-  //   }
-  // }
-
-  class legibleMergeable {
     constructor (state, modifications) {
-      this._state = transformDump(state, property => legibleMergeable.create(property));
+      this._state = transformDump(state, property => {
+        const { state, modifications } = splitIntoStateAndModifications(property);
+
+        return new Mergeable(state, modifications)
+      });
 
       this._modifications = modifications;
-    }
-
-    static create (dump) {
-      const { state, modifications } = splitIntoStateAndModifications(dump);
-
-      return new this(state, modifications)
     }
 
     has (key) {
@@ -195,6 +136,7 @@
     /*
      * Returns a proxy to make it possible to directly work on the state.
      * Useful for e.g. the vue v-model.
+     * TODO: check practicability
      */
     get use () {
       return new Proxy(this, {
@@ -219,6 +161,15 @@
     }
 
     /*
+     * Not serialized state with all MergeableObject. Only manipulate the objects
+     * with this, changes to the array are not persisted.
+     * TODO: add test
+     */
+    state () {
+      return { ...this._state }
+    }
+
+    /*
      * The state without the modifications, it's the "pure" document
      */
     base () {
@@ -226,7 +177,7 @@
     }
 
     meta () {
-      return { [MODIFICATIONS_KEY]: { ...this._modifications } }
+      return { [Mergeable.MODIFICATIONS_KEY]: { ...this._modifications } }
     }
 
     /*
@@ -235,7 +186,7 @@
     dump () {
       return {
         ...transformInternalState(this._state, property => property.dump()),
-        [MODIFICATIONS_KEY]: this._modifications
+        [Mergeable.MODIFICATIONS_KEY]: this._modifications
       }
     }
 
@@ -248,36 +199,91 @@
     }
 
     clone () {
-      // eslint-disable-next-line new-cap
-      return new legibleMergeable(deepCopy(this._state), { ...this._modifications })
-    }
-
-    static merge (stateA, stateB) {
-      const result = merge(stateA._state, stateA._modifications, stateB._state, stateB._modifications);
-
-      return new this(deepCopy(result.state), result.modifications)
+      return new Mergeable(deepCopy(this._state), { ...this._modifications })
     }
 
     merge (stateB) {
-      const result = merge(this._state, this._modifications, stateB._state, stateB._modifications);
+      const result = mergeFunction(this._state, this._modifications, stateB._state, stateB._modifications);
 
       this._state = result.state;
       this._modifications = result.modifications;
 
       return this
     }
-
-    static get _mergeFunction () {
-      return merge
-    }
-
-    static get KEY () {
-      return {
-        MODIFICATIONS: MODIFICATIONS_KEY
-      }
-    }
   }
 
-  return legibleMergeable;
+  function splitIntoStateAndModifications (dump) {
+    let modifications = {};
+    const state = deepCopy(dump);
+
+    if (hasKey(state, Mergeable.MODIFICATIONS_KEY)) {
+      modifications = state[Mergeable.MODIFICATIONS_KEY];
+      delete state[Mergeable.MODIFICATIONS_KEY];
+    }
+
+    return { modifications, state }
+  }
+
+  /**
+   * Transform a given internal state.
+   * If the instance is found it gets transformed via the given callback
+   */
+  function transformInternalState (state, transformInstanceFn) {
+    return Object
+      .entries(state)
+      .reduce((result, [identifier, property]) => {
+        if (typeof property !== 'object') {
+          result[identifier] = property;
+        } else if (property instanceof Mergeable) {
+          result[identifier] = transformInstanceFn(property);
+        } else {
+          result[identifier] = deepCopy(property);
+        }
+
+        return result
+      }, {})
+  }
+
+  /**
+   * Transform a given dumped (raw) object.
+   * If the instance is found it gets transformed via the given callback
+   */
+  function transformDump (dump, transformInstanceFn) {
+    return Object
+      .entries(dump)
+      .reduce((result, [identifier, property]) => {
+        if (isObject(property) && isObject(property[Mergeable.MODIFICATIONS_KEY])) {
+          result[identifier] = transformInstanceFn(property);
+        } else {
+          result[identifier] = property;
+        }
+
+        return result
+      }, {})
+  }
+
+  const legibleMergeable = {
+    create (dump) {
+      const { state, modifications } = splitIntoStateAndModifications(dump || {});
+
+      return new Mergeable(state, modifications)
+    },
+
+    merge (docA, docB) {
+      if (!(docA instanceof Mergeable) || !(docB instanceof Mergeable)) {
+        throw TypeError('One argument is not an instance of Mergeable')
+      }
+
+      const result = mergeFunction(docA._state, docA._modifications, docB._state, docB._modifications);
+
+      return new Mergeable(deepCopy(result.state), result.modifications)
+    }
+  };
+
+  exports.Mergeable = Mergeable;
+  exports.legibleMergeable = legibleMergeable;
+  exports.mergeFunction = mergeFunction;
+
+  Object.defineProperty(exports, '__esModule', { value: true });
 
 })));

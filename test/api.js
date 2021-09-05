@@ -1,6 +1,8 @@
-const legibleMergeable = require('../dist/legible-mergeable.js')
 const expect = require('chai').expect
-const MODIFICATIONS_KEY = legibleMergeable.KEY.MODIFICATIONS
+
+const legibleMergeable = require('../dist/legible-mergeable.js').legibleMergeable
+const Mergeable = require('../dist/legible-mergeable.js').Mergeable
+const MODIFICATIONS_KEY = Mergeable.MODIFICATIONS_KEY
 
 const newDate = date => (new Date(date)).toISOString()
 
@@ -8,6 +10,13 @@ const newDate = date => (new Date(date)).toISOString()
 
 describe('api', function () {
   describe('create', function () {
+    it('an empty object', function () {
+      const item = legibleMergeable.create()
+
+      expect(item.base()).to.eql({})
+      expect(item.dump()).to.eql({ [MODIFICATIONS_KEY]: {} })
+    })
+
     it('a mergeable object', function () {
       const base = {
         id: 1,
@@ -206,10 +215,10 @@ describe('api', function () {
     it('get nested objects', function () {
       const item = legibleMergeable.create(getSample())
 
-      expect(item.get(7)).to.be.an.instanceof(legibleMergeable)
-      expect(item.get('foo')).to.be.an.instanceof(legibleMergeable)
-      expect(item.get('foo').get('nested')).to.be.an.instanceof(legibleMergeable)
-      expect(item.get('noMergeable')).not.to.be.an.instanceof(legibleMergeable)
+      expect(item.get(7)).to.be.an.instanceof(Mergeable)
+      expect(item.get('foo')).to.be.an.instanceof(Mergeable)
+      expect(item.get('foo').get('nested')).to.be.an.instanceof(Mergeable)
+      expect(item.get('noMergeable')).not.to.be.an.instanceof(Mergeable)
     })
 
     it('change properties of nested objects', function () {
@@ -252,6 +261,63 @@ describe('api', function () {
       const itemClone = item.clone().dump()
 
       expect(item.dump()).to.eql(itemClone).but.to.not.equal(itemClone)
+    })
+
+    xit('merge', function () {
+      // const replicaA = legibleMergeable.create({
+      //   1: {
+      //     name: 'Thriller', price: 9.99, authors: ['Peter'],
+      //     [MODIFICATIONS_KEY]: { name: '2021-08-03', price: '2021-08-01' }
+      //   },
+
+      //   2: {
+      //     name: 'Novel', price: 5.99, authors: ['Fridolin', 'Gustav'],
+      //     [MODIFICATIONS_KEY]: { name: '2021-08-03', price: '2021-08-01' }
+      //   },
+
+      //   [MODIFICATIONS_KEY]: {
+      //     1: '2021-08-01'
+      //   }
+      // })
+
+      // const replicaB = replicaA.clone()
+      // const date = newDate('2021-08-10')
+      // replicaB.delete(2, date)
+      // replicaB.get(1).set('name', 'Science Fiction', date)
+      // replicaB.get(1).set('authors', ['Bob'], date)
+      // replicaB.delete('size', date)
+
+      // const replicaC1 = legibleMergeable.merge(replicaA, replicaB)
+      // const replicaC2 = replicaB.merge(replicaA)
+
+      // const dump = replicaC1.dump()
+      // const modifications = dump[MODIFICATIONS_KEY]
+      // delete dump[MODIFICATIONS_KEY]
+
+      // const expected = {
+      //   1: {
+      //     name: 'Thriller', price: 9.99, authors: ['Peter'],
+      //     [MODIFICATIONS_KEY]: { name: '2021-08-03', price: '2021-08-01' }
+      //   },
+
+      //   2: {
+      //     name: 'Novel', price: 5.99, authors: ['Fridolin', 'Gustav'],
+      //     [MODIFICATIONS_KEY]: { name: '2021-08-03', price: '2021-08-01' }
+      //   },
+
+      //   [MODIFICATIONS_KEY]: {
+      //     1: '2021-08-01',
+      //   }
+      // }
+
+      // expect(replicaC1).to.eql(replicaC2)
+      // expect(dump).to.eql(expected)
+      // expect(replicaA.size()).to.equal(4)
+      // expect(replicaB.size()).to.equal(3)
+      // expect(modifications.name).to.equal(date)
+      // expect(modifications.price).to.equal(date)
+      // expect(modifications.isCold).to.equal(newDate('2020-08-05'))
+      // expect(modifications.isOpen).to.be.undefined
     })
   })
 })
