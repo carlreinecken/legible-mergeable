@@ -2,6 +2,8 @@ const legibleMergeable = require('../dist/legible-mergeable.js')
 const expect = require('chai').expect
 const MODIFICATIONS_KEY = legibleMergeable.KEY.MODIFICATIONS
 
+const newDate = date => (new Date(date)).toISOString()
+
 /* eslint-disable no-unused-expressions */
 
 describe('api', function () {
@@ -27,7 +29,7 @@ describe('api', function () {
         name: 'Oatmilk',
         price: 140,
         [MODIFICATIONS_KEY]: {
-          price: new Date('2020-08-26')
+          price: newDate('2020-08-26')
         }
       }
 
@@ -41,7 +43,7 @@ describe('api', function () {
 
   describe('manipulate', function () {
     it('a mergeable object', function () {
-      const date = new Date()
+      const date = newDate(new Date())
       const item = legibleMergeable.create({
         id: 1,
         name: 'Oatmilk',
@@ -63,8 +65,8 @@ describe('api', function () {
       }
 
       expect(dump).to.eql(expected)
-      expect(changes.isOpen.getTime()).to.equal(date.getTime())
-      expect(changes.price.getTime()).to.equal(date.getTime())
+      expect(changes.isOpen).to.equal(date)
+      expect(changes.price).to.equal(date)
       expect(changes.name).to.be.undefined
       expect(changes.id).to.be.undefined
     })
@@ -94,23 +96,23 @@ describe('api', function () {
       expect(item.use.isOpen).to.eql(true)
       expect(item.use.price).to.eql(42)
       expect(item.use.name).to.be.undefined
-      expect(changes.isOpen.getTime()).to.be.not.null
-      expect(changes.price.getTime()).to.be.not.null
-      expect(changes.name.getTime()).to.be.not.null
+      expect(changes.isOpen).to.be.not.null
+      expect(changes.price).to.be.not.null
+      expect(changes.name).to.be.not.null
       expect(changes.id).to.be.undefined
     })
 
     it('a mergeable object with changes', function () {
-      const date = new Date('2020-09-06')
+      const date = newDate('2020-09-06')
       const original = {
         id: 1,
         name: 'Oatmilk',
         price: 240,
         isOpen: true,
         [MODIFICATIONS_KEY]: {
-          name: new Date('2020-08-03'),
-          isOpen: new Date('2020-08-05'),
-          price: new Date('2020-09-01')
+          name: newDate('2020-08-03'),
+          isOpen: newDate('2020-08-05'),
+          price: newDate('2020-09-01')
         }
       }
       const item = legibleMergeable.create(original)
@@ -135,10 +137,10 @@ describe('api', function () {
       }
 
       expect(dump).to.eql(expected)
-      expect(changes.name.getTime()).to.equal(date.getTime())
-      expect(changes.isCold.getTime()).to.equal(date.getTime())
-      expect(changes.isOpen.getTime()).to.equal(date.getTime())
-      expect(changes.price.getTime()).to.equal((new Date('2020-09-01').getTime()))
+      expect(changes.name).to.equal(date)
+      expect(changes.isCold).to.equal(date)
+      expect(changes.isOpen).to.equal(date)
+      expect(changes.price).to.equal(newDate('2020-09-01'))
       expect(changes.id).to.be.undefined
     })
   })
@@ -157,7 +159,7 @@ describe('api', function () {
       })
 
       const replicaB = replicaA.clone()
-      const date = new Date('2020-08-04')
+      const date = newDate('2020-08-04')
       replicaB.set('name', 'Almondmilk', date)
       replicaB.set('isCold', false, date)
       replicaB.delete('price', date)
@@ -179,9 +181,9 @@ describe('api', function () {
       expect(dump).to.eql(expected)
       expect(replicaA.size()).to.equal(4)
       expect(replicaB.size()).to.equal(3)
-      expect(changes.name.getTime()).to.equal(date.getTime())
-      expect(changes.price.getTime()).to.equal(date.getTime())
-      expect(changes.isCold.getTime()).to.equal((new Date('2020-08-05')).getTime())
+      expect(changes.name).to.equal(date)
+      expect(changes.price).to.equal(date)
+      expect(changes.isCold).to.equal('2020-08-05')
       expect(changes.isOpen).to.be.undefined
     })
   })
@@ -194,7 +196,7 @@ describe('api', function () {
         age: 8,
         nested: {
           list: [1, 2, 4, 8, 16, 32, 64],
-          [MODIFICATIONS_KEY]: { list: new Date('2020-08-05') }
+          [MODIFICATIONS_KEY]: { list: newDate('2020-08-05') }
         },
         [MODIFICATIONS_KEY]: {}
       },

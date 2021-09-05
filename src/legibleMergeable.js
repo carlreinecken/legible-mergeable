@@ -1,30 +1,17 @@
-import { MODIFICATIONS_KEY, DEFAULT_ID_KEY } from './constants'
+import { MODIFICATIONS_KEY } from './constants'
 import mergeObject from './merge-object'
-import util from './util'
+import * as util from './util'
+import { transformDump, transformInternalState, splitIntoStateAndModifications } from './transform-util'
 
 export default class legibleMergeable {
   constructor (state, modifications) {
-    this._state = {}
+    this._state = transformDump(state, property => legibleMergeable.create(property))
 
-    for (const [identifier, property] of Object.entries(state)) {
-      if (util.isObject(property) && util.isObject(property[MODIFICATIONS_KEY])) {
-        this._state[identifier] = legibleMergeable.create(property)
-      } else {
-        this._state[identifier] = property
-      }
-    }
-
-    this._modifications = util.parseDateValuesInObject(modifications)
+    this._modifications = modifications
   }
 
-  static create (object) {
-    let modifications = {}
-    const state = util.deepCopy(object)
-
-    if (util.hasKey(state, MODIFICATIONS_KEY)) {
-      modifications = state[MODIFICATIONS_KEY]
-      delete state[MODIFICATIONS_KEY]
-    }
+  static create (dump) {
+    const { state, modifications } = splitIntoStateAndModifications(dump)
 
     return new this(state, modifications)
   }
@@ -73,10 +60,6 @@ export default class legibleMergeable {
     })
   }
 
-  id () {
-    return this._state[DEFAULT_ID_KEY]
-  }
-
   size () {
     return Object.keys(this._state).length
   }
@@ -85,7 +68,7 @@ export default class legibleMergeable {
    * The state without the modifications, it's the "pure" document
    */
   base () {
-    return this._getRecursiveState(property => property.base())
+    return transformInternalState(this._state, property => property.base())
   }
 
   meta () {
@@ -97,7 +80,7 @@ export default class legibleMergeable {
    */
   dump () {
     return {
-      ...this._getRecursiveState(property => property.dump()),
+      ...transformInternalState(this._state, property => property.dump()),
       [MODIFICATIONS_KEY]: this._modifications
     }
   }
@@ -123,8 +106,10 @@ export default class legibleMergeable {
 
   merge (stateB) {
     const result = mergeObject(this._state, this._modifications, stateB._state, stateB._modifications)
+
     this._state = result.state
     this._modifications = result.modifications
+
     return this
   }
 
@@ -136,25 +121,5 @@ export default class legibleMergeable {
     return {
       MODIFICATIONS: MODIFICATIONS_KEY
     }
-  }
-
-  /**
-   * Gets the state, but if the instance is found it gets
-   * transformed via the given callback
-   */
-  _getRecursiveState (transformInstanceFn) {
-    return Object
-      .entries(this._state)
-      .reduce((result, [identifier, property]) => {
-        if (typeof property !== 'object') {
-          result[identifier] = property
-        } else if (property instanceof legibleMergeable) {
-          result[identifier] = transformInstanceFn(property)
-        } else {
-          result[identifier] = util.deepCopy(property)
-        }
-
-        return result
-      }, {})
   }
 }

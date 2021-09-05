@@ -4,7 +4,6 @@
   (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.legibleMergeable = factory());
 }(this, (function () { 'use strict';
 
-  const DEFAULT_ID_KEY = 'id';
   const MODIFICATIONS_KEY = '^m';
 
   function hasKey (object, key) {
@@ -16,129 +15,163 @@
   }
 
   function deepCopy (value) {
-    // TODO: replace with something better performing.
-    //       makes following util function parseDateValuesInObject obsolete.
+    // TODO: replace with something better performing. be sure to compare perfomance
     return JSON.parse(JSON.stringify(value))
   }
 
-  function parseDateValuesInObject (changes) {
-    return Object.keys(changes).reduce((acc, key) => {
-      return ((acc[key] = new Date(changes[key])), acc)
-    }, {})
-  }
-
   function newDate (date) {
-    return date ? new Date(date) : new Date()
+    return (date ? new Date(date) : new Date()).toISOString()
   }
 
   function uniquenizeArray (array) {
     return [...new Set(array)]
   }
 
-  function arrayToObject (array, customIndex) {
-    return array.reduce((acc, value, i) => {
-      const key = customIndex == null ? i : customIndex;
-
-      acc[value[key]] = value;
-
-      return acc
-    }, {})
+  function isPropertyMergeable (property) {
+    return isObject(property) && isObject(property.modifications)
   }
 
-  var util = {
-    hasKey,
-    isObject,
-    deepCopy,
-    parseDateValuesInObject,
-    newDate,
-    uniquenizeArray,
-    arrayToObject
-  };
-
   function merge (stateA, modificationsA, stateB, modificationsB) {
-    const modifications = { a: modificationsA, b: modificationsB, result: {} };
-    const state = { a: stateA, b: stateB, result: {} };
+    const input = {
+      a: { state: stateA, modifications: modificationsA },
+      b: { state: stateB, modifications: modificationsB }
+    };
 
-    const properties = util.uniquenizeArray([].concat(
-      Object.keys(state.a),
-      Object.keys(modifications.a),
-      Object.keys(state.b),
-      Object.keys(modifications.b)
+    const result = { state: {}, modifications: {} };
+
+    const properties = uniquenizeArray([].concat(
+      Object.keys(input.a.state),
+      Object.keys(input.a.modifications),
+      Object.keys(input.b.state),
+      Object.keys(input.b.modifications)
     ));
 
     for (const prop of properties) {
-      const aChangedAt = modifications.a[prop] ? new Date(modifications.a[prop]) : null;
-      const bChangedAt = modifications.b[prop] ? new Date(modifications.b[prop]) : null;
+      const aChangedAt = input.a.modifications[prop] ? new Date(input.a.modifications[prop]) : null;
+      const bChangedAt = input.b.modifications[prop] ? new Date(input.b.modifications[prop]) : null;
 
+      // The property in A is newer
       if (aChangedAt > bChangedAt) {
-        if (util.hasKey(state.a, prop)) {
-          state.result[prop] = state.a[prop];
+        if (hasKey(input.a.state, prop)) {
+          result.state[prop] = input.a.state[prop];
         }
 
-        modifications.result[prop] = aChangedAt;
+        result.modifications[prop] = input.a.modifications[prop];
 
         continue
       }
 
+      // The property in B is newer
       if (aChangedAt < bChangedAt) {
-        if (util.hasKey(state.b, prop)) {
-          state.result[prop] = state.b[prop];
+        if (hasKey(input.b.state, prop)) {
+          result.state[prop] = input.b.state[prop];
         }
 
-        modifications.result[prop] = bChangedAt;
+        result.modifications[prop] = input.b.modifications[prop];
 
         continue
       }
 
-      if (util.hasKey(state.a, prop)) {
-        state.result[prop] = state.a[prop];
-      } else if (util.hasKey(state.b, prop)) {
-        state.result[prop] = state.b[prop];
+      // The modification date is on both sides the same
+      if (hasKey(input.a.modifications, prop)) {
+        result.modifications[prop] = input.a.modifications[prop];
       }
 
-      if (util.hasKey(modifications.result, prop)) {
+      // Call the merge function recursively if both properties are mergeables
+      if (isPropertyMergeable(input.a.state[prop]) && isPropertyMergeable(input.b.state[prop])) {
+        result.state[prop] = merge(
+          input.a.state[prop].state,
+          input.a.state[prop].modifications,
+          input.b.state[prop].state,
+          input.b.state[prop].modifications
+        );
+
         continue
       }
 
-      if (util.hasKey(modifications.a, prop)) {
-        modifications.result[prop] = aChangedAt;
-      } else if (util.hasKey(modifications.b, prop)) {
-        modifications.result[prop] = bChangedAt;
+      // The property is on both sides the same
+      if (hasKey(input.a.state, prop)) {
+        result.state[prop] = input.a.state[prop];
       }
     }
 
-    return { state: state.result, modifications: modifications.result }
+    return result
   }
+
+  /**
+   * Transform a given internal state.
+   * If the instance is found it gets transformed via the given callback
+   */
+  function transformInternalState (state, transformInstanceFn) {
+    return Object
+      .entries(state)
+      .reduce((result, [identifier, property]) => {
+        if (typeof property !== 'object') {
+          result[identifier] = property;
+        } else if (property instanceof legibleMergeable) {
+          result[identifier] = transformInstanceFn(property);
+        } else {
+          result[identifier] = deepCopy(property);
+        }
+
+        return result
+      }, {})
+  }
+
+  /**
+   * Transform a given dumped (raw) object.
+   * If the instance is found it gets transformed via the given callback
+   */
+  function transformDump (dump, transformInstanceFn) {
+    return Object
+      .entries(dump)
+      .reduce((result, [identifier, property]) => {
+        if (isObject(property) && isObject(property[MODIFICATIONS_KEY])) {
+          result[identifier] = transformInstanceFn(property);
+        } else {
+          result[identifier] = property;
+        }
+
+        return result
+      }, {})
+  }
+
+  function splitIntoStateAndModifications (dump) {
+    let modifications = {};
+    const state = deepCopy(dump);
+
+    if (hasKey(state, MODIFICATIONS_KEY)) {
+      modifications = state[MODIFICATIONS_KEY];
+      delete state[MODIFICATIONS_KEY];
+    }
+
+    return { modifications, state }
+  }
+
+  // export class legibleMergeableN {
+  //   // TODO: move only static methods in here. so the other class can be PascalCase
+  //   static create (dump) {
+  //     const { state, modifications } = splitIntoStateAndModifications(dump)
+
+  //     return new legibleMergeable(state, modifications)
+  //   }
+  // }
 
   class legibleMergeable {
     constructor (state, modifications) {
-      this._state = {};
+      this._state = transformDump(state, property => legibleMergeable.create(property));
 
-      for (const [identifier, property] of Object.entries(state)) {
-        if (util.isObject(property) && util.isObject(property[MODIFICATIONS_KEY])) {
-          this._state[identifier] = legibleMergeable.create(property);
-        } else {
-          this._state[identifier] = property;
-        }
-      }
-
-      this._modifications = util.parseDateValuesInObject(modifications);
+      this._modifications = modifications;
     }
 
-    static create (object) {
-      let modifications = {};
-      const state = util.deepCopy(object);
-
-      if (util.hasKey(state, MODIFICATIONS_KEY)) {
-        modifications = state[MODIFICATIONS_KEY];
-        delete state[MODIFICATIONS_KEY];
-      }
+    static create (dump) {
+      const { state, modifications } = splitIntoStateAndModifications(dump);
 
       return new this(state, modifications)
     }
 
     has (key) {
-      return util.hasKey(this._state, key)
+      return hasKey(this._state, key)
     }
 
     get (key, fallback) {
@@ -151,12 +184,12 @@
 
     set (key, value, date) {
       this._state[key] = value;
-      this._modifications[key] = util.newDate(date);
+      this._modifications[key] = newDate(date);
     }
 
     delete (key, date) {
       delete this._state[key];
-      this._modifications[key] = util.newDate(date);
+      this._modifications[key] = newDate(date);
     }
 
     /*
@@ -181,10 +214,6 @@
       })
     }
 
-    id () {
-      return this._state[DEFAULT_ID_KEY]
-    }
-
     size () {
       return Object.keys(this._state).length
     }
@@ -193,7 +222,7 @@
      * The state without the modifications, it's the "pure" document
      */
     base () {
-      return this._getRecursiveState(property => property.base())
+      return transformInternalState(this._state, property => property.base())
     }
 
     meta () {
@@ -205,7 +234,7 @@
      */
     dump () {
       return {
-        ...this._getRecursiveState(property => property.dump()),
+        ...transformInternalState(this._state, property => property.dump()),
         [MODIFICATIONS_KEY]: this._modifications
       }
     }
@@ -220,19 +249,21 @@
 
     clone () {
       // eslint-disable-next-line new-cap
-      return new legibleMergeable(util.deepCopy(this._state), { ...this._modifications })
+      return new legibleMergeable(deepCopy(this._state), { ...this._modifications })
     }
 
     static merge (stateA, stateB) {
       const result = merge(stateA._state, stateA._modifications, stateB._state, stateB._modifications);
 
-      return new this(util.deepCopy(result.state), result.modifications)
+      return new this(deepCopy(result.state), result.modifications)
     }
 
     merge (stateB) {
       const result = merge(this._state, this._modifications, stateB._state, stateB._modifications);
+
       this._state = result.state;
       this._modifications = result.modifications;
+
       return this
     }
 
@@ -244,26 +275,6 @@
       return {
         MODIFICATIONS: MODIFICATIONS_KEY
       }
-    }
-
-    /**
-     * Gets the state, but if the instance is found it gets
-     * transformed via the given callback
-     */
-    _getRecursiveState (transformInstanceFn) {
-      return Object
-        .entries(this._state)
-        .reduce((result, [identifier, property]) => {
-          if (typeof property !== 'object') {
-            result[identifier] = property;
-          } else if (property instanceof legibleMergeable) {
-            result[identifier] = transformInstanceFn(property);
-          } else {
-            result[identifier] = util.deepCopy(property);
-          }
-
-          return result
-        }, {})
     }
   }
 

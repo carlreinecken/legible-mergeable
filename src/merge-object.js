@@ -1,56 +1,72 @@
-import util from './util'
+import * as util from './util'
+
+function isPropertyMergeable (property) {
+  return util.isObject(property) && util.isObject(property.modifications)
+}
 
 export default function merge (stateA, modificationsA, stateB, modificationsB) {
-  const modifications = { a: modificationsA, b: modificationsB, result: {} }
-  const state = { a: stateA, b: stateB, result: {} }
+  const input = {
+    a: { state: stateA, modifications: modificationsA },
+    b: { state: stateB, modifications: modificationsB }
+  }
+
+  const result = { state: {}, modifications: {} }
 
   const properties = util.uniquenizeArray([].concat(
-    Object.keys(state.a),
-    Object.keys(modifications.a),
-    Object.keys(state.b),
-    Object.keys(modifications.b)
+    Object.keys(input.a.state),
+    Object.keys(input.a.modifications),
+    Object.keys(input.b.state),
+    Object.keys(input.b.modifications)
   ))
 
   for (const prop of properties) {
-    const aChangedAt = modifications.a[prop] ? new Date(modifications.a[prop]) : null
-    const bChangedAt = modifications.b[prop] ? new Date(modifications.b[prop]) : null
+    const aChangedAt = input.a.modifications[prop] ? new Date(input.a.modifications[prop]) : null
+    const bChangedAt = input.b.modifications[prop] ? new Date(input.b.modifications[prop]) : null
 
+    // The property in A is newer
     if (aChangedAt > bChangedAt) {
-      if (util.hasKey(state.a, prop)) {
-        state.result[prop] = state.a[prop]
+      if (util.hasKey(input.a.state, prop)) {
+        result.state[prop] = input.a.state[prop]
       }
 
-      modifications.result[prop] = aChangedAt
+      result.modifications[prop] = input.a.modifications[prop]
 
       continue
     }
 
+    // The property in B is newer
     if (aChangedAt < bChangedAt) {
-      if (util.hasKey(state.b, prop)) {
-        state.result[prop] = state.b[prop]
+      if (util.hasKey(input.b.state, prop)) {
+        result.state[prop] = input.b.state[prop]
       }
 
-      modifications.result[prop] = bChangedAt
+      result.modifications[prop] = input.b.modifications[prop]
 
       continue
     }
 
-    if (util.hasKey(state.a, prop)) {
-      state.result[prop] = state.a[prop]
-    } else if (util.hasKey(state.b, prop)) {
-      state.result[prop] = state.b[prop]
+    // The modification date is on both sides the same
+    if (util.hasKey(input.a.modifications, prop)) {
+      result.modifications[prop] = input.a.modifications[prop]
     }
 
-    if (util.hasKey(modifications.result, prop)) {
+    // Call the merge function recursively if both properties are mergeables
+    if (isPropertyMergeable(input.a.state[prop]) && isPropertyMergeable(input.b.state[prop])) {
+      result.state[prop] = merge(
+        input.a.state[prop].state,
+        input.a.state[prop].modifications,
+        input.b.state[prop].state,
+        input.b.state[prop].modifications
+      )
+
       continue
     }
 
-    if (util.hasKey(modifications.a, prop)) {
-      modifications.result[prop] = aChangedAt
-    } else if (util.hasKey(modifications.b, prop)) {
-      modifications.result[prop] = bChangedAt
+    // The property is on both sides the same
+    if (util.hasKey(input.a.state, prop)) {
+      result.state[prop] = input.a.state[prop]
     }
   }
 
-  return { state: state.result, modifications: modifications.result }
+  return result
 }
