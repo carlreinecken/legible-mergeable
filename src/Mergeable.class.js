@@ -41,7 +41,8 @@ export class Mergeable {
   /*
    * Returns a proxy to make it possible to directly work on the state.
    * Useful for e.g. the vue v-model.
-   * TODO: check practicability
+   * TODO: check practicability. Is sadly really buggy with Vue... Get's stuck
+   * when property of state is not present when the proxy is created (? look at HTML demo).
    */
   get use () {
     return new Proxy(this, {
@@ -66,9 +67,7 @@ export class Mergeable {
   }
 
   /*
-   * Not serialized state with all MergeableObject. Only manipulate the objects
-   * with this, changes to the array are not persisted.
-   * TODO: add test
+   * Only use this when you need to iterate over all properties, to work on them
    */
   state () {
     return { ...this._state }
