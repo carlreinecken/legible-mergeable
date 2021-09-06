@@ -1,35 +1,35 @@
 import * as util from './util'
 
-function isPropertyMergeable (property) {
-  return util.isObject(property) && util.isObject(property.modifications)
-}
-
-export default function mergeFunction (stateA, modificationsA, stateB, modificationsB) {
-  const input = {
-    a: { state: stateA, modifications: modificationsA },
-    b: { state: stateB, modifications: modificationsB }
+export default function mergeFunction ({ a: docA, b: docB }, modificationsKey) {
+  function isPropertyMergeable (property) {
+    return util.isObject(property) && util.isObject(property[modificationsKey])
   }
 
-  const result = { state: {}, modifications: {} }
+  const input = {
+    a: { state: docA.state, mods: docA[modificationsKey] },
+    b: { state: docB.state, mods: docB[modificationsKey] }
+  }
+
+  const result = { state: {}, mods: {} }
 
   const properties = util.uniquenizeArray([].concat(
     Object.keys(input.a.state),
-    Object.keys(input.a.modifications),
+    Object.keys(input.a.mods),
     Object.keys(input.b.state),
-    Object.keys(input.b.modifications)
+    Object.keys(input.b.mods)
   ))
 
   for (const prop of properties) {
-    const aChangedAt = input.a.modifications[prop] ? new Date(input.a.modifications[prop]) : null
-    const bChangedAt = input.b.modifications[prop] ? new Date(input.b.modifications[prop]) : null
+    const aChangedAt = input.a.mods[prop] ? new Date(input.a.mods[prop]) : null
+    const bChangedAt = input.b.mods[prop] ? new Date(input.b.mods[prop]) : null
 
     // The property in A is newer
     if (aChangedAt > bChangedAt) {
       if (util.hasKey(input.a.state, prop)) {
-        result.state[prop] = input.a.state[prop]
+        result.state[prop] = util.deepCopy(input.a.state[prop])
       }
 
-      result.modifications[prop] = input.a.modifications[prop]
+      result.mods[prop] = input.a.mods[prop]
 
       continue
     }
@@ -37,36 +37,41 @@ export default function mergeFunction (stateA, modificationsA, stateB, modificat
     // The property in B is newer
     if (aChangedAt < bChangedAt) {
       if (util.hasKey(input.b.state, prop)) {
-        result.state[prop] = input.b.state[prop]
+        result.state[prop] = util.deepCopy(input.b.state[prop])
       }
 
-      result.modifications[prop] = input.b.modifications[prop]
+      result.mods[prop] = input.b.mods[prop]
 
       continue
     }
 
     // The modification date is on both sides the same
-    if (util.hasKey(input.a.modifications, prop)) {
-      result.modifications[prop] = input.a.modifications[prop]
+    if (util.hasKey(input.a.mods, prop)) {
+      result.mods[prop] = input.a.mods[prop]
     }
 
     // Call the merge function recursively if both properties are mergeables
     if (isPropertyMergeable(input.a.state[prop]) && isPropertyMergeable(input.b.state[prop])) {
-      result.state[prop] = mergeFunction(
-        input.a.state[prop].state,
-        input.a.state[prop].modifications,
-        input.b.state[prop].state,
-        input.b.state[prop].modifications
-      )
+      // console.log('attention! merging nested properties!', prop)
+      result.state[prop] = mergeFunction({
+        a: { state: input.a.state[prop].state, [modificationsKey]: input.a.state[prop][modificationsKey] },
+        b: { state: input.b.state[prop].state, [modificationsKey]: input.b.state[prop][modificationsKey] }
+      }, modificationsKey)
 
       continue
     }
 
+    // console.log('doing nuffing', prop, input.a.state[prop])
+
     // The property is on both sides the same
     if (util.hasKey(input.a.state, prop)) {
-      result.state[prop] = input.a.state[prop]
+      result.state[prop] = util.deepCopy(input.a.state[prop])
     }
   }
+
+  result[modificationsKey] = result.mods
+
+  delete result.mods
 
   return result
 }

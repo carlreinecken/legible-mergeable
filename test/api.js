@@ -263,61 +263,56 @@ describe('api', function () {
       expect(item.dump()).to.eql(itemClone).but.to.not.equal(itemClone)
     })
 
-    xit('merge', function () {
-      // const replicaA = legibleMergeable.create({
-      //   1: {
-      //     name: 'Thriller', price: 9.99, authors: ['Peter'],
-      //     [MODIFICATIONS_KEY]: { name: '2021-08-03', price: '2021-08-01' }
-      //   },
+    it('merge', function () {
+      const MOD_KEY = MODIFICATIONS_KEY
 
-      //   2: {
-      //     name: 'Novel', price: 5.99, authors: ['Fridolin', 'Gustav'],
-      //     [MODIFICATIONS_KEY]: { name: '2021-08-03', price: '2021-08-01' }
-      //   },
+      const replicaOriginal = legibleMergeable.create({
+        1: {
+          name: 'Thriller', price: 9.99, authors: ['Peter'], [MOD_KEY]: { name: '2021-08-03', price: '2021-08-01' }
+        },
 
-      //   [MODIFICATIONS_KEY]: {
-      //     1: '2021-08-01'
-      //   }
-      // })
+        2: {
+          name: 'Novel', price: 5.99, authors: ['Fridolin', 'Gustav'], [MOD_KEY]: { name: '2021-08-03', price: '2021-08-01' }
+        },
 
-      // const replicaB = replicaA.clone()
-      // const date = newDate('2021-08-10')
-      // replicaB.delete(2, date)
-      // replicaB.get(1).set('name', 'Science Fiction', date)
-      // replicaB.get(1).set('authors', ['Bob'], date)
-      // replicaB.delete('size', date)
+        3: {
+          name: 'Crime', price: 7.0, authors: [], [MOD_KEY]: { name: '2021-07-07', price: '2021-07-14' }
+        },
 
-      // const replicaC1 = legibleMergeable.merge(replicaA, replicaB)
-      // const replicaC2 = replicaB.merge(replicaA)
+        noMergePlease: { name: 'Not mergeable' },
+        [MOD_KEY]: { 1: '2021-08-01' }
+      })
 
-      // const dump = replicaC1.dump()
-      // const modifications = dump[MODIFICATIONS_KEY]
-      // delete dump[MODIFICATIONS_KEY]
+      const replicaClone = replicaOriginal.clone()
+      const date = '2021-08-10'
 
-      // const expected = {
-      //   1: {
-      //     name: 'Thriller', price: 9.99, authors: ['Peter'],
-      //     [MODIFICATIONS_KEY]: { name: '2021-08-03', price: '2021-08-01' }
-      //   },
+      replicaClone.get(2).set('authors', ['Bob'], date)
+      replicaClone.delete(2, date)
+      replicaClone.get(1).set('name', 'Scifi', date)
+      replicaClone.get(3).modify('price', price => price * 0.9, date)
+      replicaClone.get(3).modify('authors', authors => { authors.push('Daisy'); return authors }, date)
+      replicaClone.get('3').delete('name', date)
 
-      //   2: {
-      //     name: 'Novel', price: 5.99, authors: ['Fridolin', 'Gustav'],
-      //     [MODIFICATIONS_KEY]: { name: '2021-08-03', price: '2021-08-01' }
-      //   },
+      const replicaResultStatic = legibleMergeable.merge(replicaOriginal, replicaClone)
+      const replicaResult = replicaClone.merge(replicaOriginal)
 
-      //   [MODIFICATIONS_KEY]: {
-      //     1: '2021-08-01',
-      //   }
-      // }
+      const dump = replicaResultStatic.dump()
 
-      // expect(replicaC1).to.eql(replicaC2)
-      // expect(dump).to.eql(expected)
-      // expect(replicaA.size()).to.equal(4)
-      // expect(replicaB.size()).to.equal(3)
-      // expect(modifications.name).to.equal(date)
-      // expect(modifications.price).to.equal(date)
-      // expect(modifications.isCold).to.equal(newDate('2020-08-05'))
-      // expect(modifications.isOpen).to.be.undefined
+      const expected = {
+        1: {
+          name: 'Scifi', price: 9.99, authors: ['Peter'], [MOD_KEY]: { name: '2021-08-10', price: '2021-08-01' }
+        },
+
+        3: {
+          price: 6.3, authors: ['Daisy'], [MOD_KEY]: { name: '2021-08-10', price: '2021-08-10', authors: '2021-08-10' }
+        },
+
+        noMergePlease: { name: 'Not mergeable' },
+        [MOD_KEY]: { 1: '2021-08-01', 2: date }
+      }
+
+      expect(replicaResultStatic).to.eql(replicaResult)
+      expect(dump).to.eql(expected)
     })
   })
 })

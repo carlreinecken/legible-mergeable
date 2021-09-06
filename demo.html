@@ -9,6 +9,20 @@
                 font-family: sans-serif;
             }
 
+            button {
+                background-color: #f0f0f0;
+                border: 1px solid #f0f0f0;
+                border-radius: 5px;
+                padding: 0.5em;
+            }
+
+            input {
+                border-radius: 5px;
+                border: 1px solid #a4a4a4;
+                padding: 0.5em;
+            }
+
+
             .clients {
                 display: flex;
                 flex-wrap: wrap;
@@ -21,9 +35,10 @@
                 padding: 10px;
                 margin-right: 10px;
                 margin-bottom: 10px;
+                position: relative;
             }
 
-            .client > .newItem {
+            .client > .newItemInput {
                 padding: 10px 0;
                 display: flex;
                 justify-content: space-between;
@@ -39,10 +54,6 @@
                 margin: 0;
             }
 
-            .item > .item-delete {
-                padding: 0;
-            }
-
             .sendMode > .client input,
             .sendMode > .client button {
                 pointer-events: none;
@@ -53,6 +64,23 @@
                 cursor: pointer;
                 background-color: #93c2ff;
                 border-color: #93c2ff;
+            }
+
+            .client > .actionText {
+                display: none;
+                position: absolute;
+                text-align: center;
+                bottom: -18px;
+                width: 100%;
+                z-index: 1;
+                background-color: #305688;
+                margin-left: -10px;
+                padding: 10px 0;
+                color: #fff;
+            }
+
+            .sendMode > .client:hover > .actionText {
+                display: block;
             }
 
             header {
@@ -76,11 +104,13 @@
 
             <br /><br />
 
-            <div class="clients" :class="{sendMode: sendFrom != null}">
+            <div class="clients" :key="change" :class="{sendMode: sendFrom != null}">
                 <div v-for="(client, clientIndex) in clients"
                      :key="client.name"
                      class="client"
                      @click="sendToClient(clientIndex)">
+                    <h3 class="actionText">Send {{ clients[sendFrom]?.name }} here!</h3>
+
                     <header>
                         <h3 style="margin: 0">{{ client.name }}</h3>
                         <div>
@@ -89,77 +119,68 @@
                         </div>
                     </header>
 
-                    <div class="newItem">
-                        <input v-model="client.newItem"
+                    <div class="newItemInput">
+                        <input v-model="client.newItemInput"
+                               placeholder="New Item"
                                @keyup.enter="addItem(clientIndex)" />
                         <button @click="addItem(clientIndex)">Add</button>
                     </div>
 
-                    <draggable :value="client.list.state()" @sort="(change) => onSort(clientIndex, change)">
-                        <div class="item"
-                             v-for="item in client.list.state()"
-                             :key="client.name + item.id()"
-                             :title="item.id()">
-                            <input type="checkbox"
-                                   class="item-done"
-                                   :checked="item.get('done')"
-                                   @change="item.set('done', $event.target.checked)" />
+                    <div class="item"
+                         v-for="item in client.list.state()"
+                         :key="client.name + item.get('id')"
+                         :title="'Id: ' + item.get('id')">
+                        <input type="checkbox"
+                               class="item-done"
+                               :checked="item.get('done')"
+                               @change="item.set('done', $event.target.checked)" />
 
-                            <input type="text"
-                                   :value="item.get('title')"
-                                   @input="item.set('title', $event.target.value)" />
-                            <button class="item-delete"
-                                    @click="deleteItem(clientIndex, item.id())">
-                                X
-                            </button>
-                        </div>
-                    </draggable>
+                        <input type="text"
+                               :value="item.get('title')"
+                               @input="item.set('title', $event.target.value)" />
+                        <button class="item-delete"
+                                @click="deleteItem(clientIndex, item.get('id'))">
+                            X
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.8.4/Sortable.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/Vue.Draggable/2.20.0/vuedraggable.umd.min.js"></script>
         <script src="dist/legible-mergeable.js"></script>
 
         <script>
+const randomId = (length) => parseInt(Math.random().toString().slice(2, 2 + length)).toString(36)
+
 const app = new Vue({
     el: '#app',
+
     data: {
         sendFrom: null,
         clients: [],
-        names: ['Alice', 'Bob', 'Carol', 'Dave', 'Eric', 'Florence']
+        names: ['Alice', 'Bob', 'Carol', 'Dave', 'Eric', 'Florence'],
+        change: 0
     },
 
     mounted () {
         this.addClient()
 
         const index = 0
-        this.clients[index].newItem = 'Change Lightbulb'
+        this.clients[index].newItemInput = 'Change Lightbulb'
         this.addItem(index)
-        this.clients[index].newItem = 'Cook spicy meal'
+        this.clients[index].newItemInput = 'Cook spicy meal'
         this.addItem(index)
     },
 
     methods: {
-        onSort(clientIndex, change) {
-            const base = this.clients[clientIndex].list.base()
-            const id = base[change.oldIndex].id
-            const k = (change.oldIndex > change.newIndex) ? change.newIndex - 1 : change.newIndex
-            const afterId = k === -1 ? null : base[k].id
-
-            this.clients[clientIndex].list.move(id, afterId)
-            console.log('sorted, new position:', this.clients[clientIndex].list.meta()['^p'][id])
-        },
-
         addClient (list) {
             const name = (this.names.length > 0) ? this.names.shift() : prompt('Client Name')
             if (!name) return
             this.clients.push({
                 name,
-                newItem: '',
-                list: list || legibleMergeable.Array()
+                newItemInput: '',
+                list: list || legibleMergeable.legibleMergeable.create()
             })
         },
 
@@ -177,21 +198,30 @@ const app = new Vue({
 
         sendToClient (clientIndex) {
             if (this.sendFrom == null) return
+
             this.clients[clientIndex].list.merge(this.clients[this.sendFrom].list)
+
+            this.change++
         },
 
         addItem (clientIndex) {
-            const randomId = (length) => parseInt(Math.random().toString().slice(2, 2 + length)).toString(36)
-            this.clients[clientIndex].list.push({
-                id: randomId(5),
+            const id = randomId(10)
+
+            this.clients[clientIndex].list.set(id, legibleMergeable.legibleMergeable.create({
+                id,
                 done: false,
-                title: this.clients[clientIndex].newItem
-            })
-            this.clients[clientIndex].newItem = ''
+                title: this.clients[clientIndex].newItemInput
+            }))
+
+            this.clients[clientIndex].newItemInput = ''
+
+            this.change++
         },
 
         deleteItem (clientIndex, id) {
             this.clients[clientIndex].list.delete(id)
+
+            this.change++
         }
     }
 })

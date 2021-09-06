@@ -3,16 +3,11 @@ import mergeFunction from './merge-function'
 
 export class Mergeable {
   static get MODIFICATIONS_KEY () {
-    return '^m'
+    return '^M3Rg34bL3'
   }
 
   constructor (state, modifications) {
-    this._state = transformDump(state, property => {
-      const { state, modifications } = splitIntoStateAndModifications(property)
-
-      return new Mergeable(state, modifications)
-    })
-
+    this._state = transformDump(state, property => createMergeableFromDump(property))
     this._modifications = modifications
   }
 
@@ -30,6 +25,11 @@ export class Mergeable {
 
   set (key, value, date) {
     this._state[key] = value
+    this._modifications[key] = util.newDate(date)
+  }
+
+  modify (key, fn, date) {
+    this._state[key] = fn(this._state[key])
     this._modifications[key] = util.newDate(date)
   }
 
@@ -107,17 +107,40 @@ export class Mergeable {
     return new Mergeable(util.deepCopy(this._state), { ...this._modifications })
   }
 
-  merge (stateB) {
-    const result = mergeFunction(this._state, this._modifications, stateB._state, stateB._modifications)
+  merge (docB) {
+    if (!(docB instanceof Mergeable)) {
+      throw TypeError('Only instances of Mergeable can be merged')
+    }
 
-    this._state = result.state
-    this._modifications = result.modifications
+    const result = mergeFunction(
+      { a: isolatedDump(this), b: isolatedDump(docB) },
+      Mergeable.MODIFICATIONS_KEY
+    )
+
+    this._state = transformDump(result.state, property => createMergeableFromIsolatedDump(property))
+    this._modifications = result[Mergeable.MODIFICATIONS_KEY]
 
     return this
   }
 }
 
-export function splitIntoStateAndModifications (dump) {
+/*
+ * I would really like to put these in another file, but that doesn't
+ * work cause of circular references (I need the Mergeable class in there)
+ */
+
+export function isolatedDump (doc) {
+  return {
+    state: transformInternalState(doc._state, property => isolatedDump(property)),
+    [Mergeable.MODIFICATIONS_KEY]: doc._modifications
+  }
+}
+
+export function createMergeableFromIsolatedDump (dump) {
+  return new Mergeable(dump.state, dump[Mergeable.MODIFICATIONS_KEY])
+}
+
+export function createMergeableFromDump (dump) {
   let modifications = {}
   const state = util.deepCopy(dump)
 
@@ -126,7 +149,7 @@ export function splitIntoStateAndModifications (dump) {
     delete state[Mergeable.MODIFICATIONS_KEY]
   }
 
-  return { modifications, state }
+  return new Mergeable(state, modifications)
 }
 
 /**
@@ -153,7 +176,7 @@ function transformInternalState (state, transformInstanceFn) {
  * Transform a given dumped (raw) object.
  * If the instance is found it gets transformed via the given callback
  */
-function transformDump (dump, transformInstanceFn) {
+export function transformDump (dump, transformInstanceFn) {
   return Object
     .entries(dump)
     .reduce((result, [identifier, property]) => {

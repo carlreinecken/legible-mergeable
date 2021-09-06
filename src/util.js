@@ -12,7 +12,7 @@ export function deepCopy (value) {
 }
 
 export function newDate (date) {
-  return (date ? new Date(date) : new Date()).toISOString()
+  return date || (new Date()).toISOString()
 }
 
 export function uniquenizeArray (array) {

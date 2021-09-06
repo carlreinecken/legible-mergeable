@@ -18,43 +18,43 @@
   }
 
   function newDate (date) {
-    return (date ? new Date(date) : new Date()).toISOString()
+    return date || (new Date()).toISOString()
   }
 
   function uniquenizeArray (array) {
     return [...new Set(array)]
   }
 
-  function isPropertyMergeable (property) {
-    return isObject(property) && isObject(property.modifications)
-  }
+  function mergeFunction ({ a: docA, b: docB }, modificationsKey) {
+    function isPropertyMergeable (property) {
+      return isObject(property) && isObject(property[modificationsKey])
+    }
 
-  function mergeFunction (stateA, modificationsA, stateB, modificationsB) {
     const input = {
-      a: { state: stateA, modifications: modificationsA },
-      b: { state: stateB, modifications: modificationsB }
+      a: { state: docA.state, mods: docA[modificationsKey] },
+      b: { state: docB.state, mods: docB[modificationsKey] }
     };
 
-    const result = { state: {}, modifications: {} };
+    const result = { state: {}, mods: {} };
 
     const properties = uniquenizeArray([].concat(
       Object.keys(input.a.state),
-      Object.keys(input.a.modifications),
+      Object.keys(input.a.mods),
       Object.keys(input.b.state),
-      Object.keys(input.b.modifications)
+      Object.keys(input.b.mods)
     ));
 
     for (const prop of properties) {
-      const aChangedAt = input.a.modifications[prop] ? new Date(input.a.modifications[prop]) : null;
-      const bChangedAt = input.b.modifications[prop] ? new Date(input.b.modifications[prop]) : null;
+      const aChangedAt = input.a.mods[prop] ? new Date(input.a.mods[prop]) : null;
+      const bChangedAt = input.b.mods[prop] ? new Date(input.b.mods[prop]) : null;
 
       // The property in A is newer
       if (aChangedAt > bChangedAt) {
         if (hasKey(input.a.state, prop)) {
-          result.state[prop] = input.a.state[prop];
+          result.state[prop] = deepCopy(input.a.state[prop]);
         }
 
-        result.modifications[prop] = input.a.modifications[prop];
+        result.mods[prop] = input.a.mods[prop];
 
         continue
       }
@@ -62,52 +62,52 @@
       // The property in B is newer
       if (aChangedAt < bChangedAt) {
         if (hasKey(input.b.state, prop)) {
-          result.state[prop] = input.b.state[prop];
+          result.state[prop] = deepCopy(input.b.state[prop]);
         }
 
-        result.modifications[prop] = input.b.modifications[prop];
+        result.mods[prop] = input.b.mods[prop];
 
         continue
       }
 
       // The modification date is on both sides the same
-      if (hasKey(input.a.modifications, prop)) {
-        result.modifications[prop] = input.a.modifications[prop];
+      if (hasKey(input.a.mods, prop)) {
+        result.mods[prop] = input.a.mods[prop];
       }
 
       // Call the merge function recursively if both properties are mergeables
       if (isPropertyMergeable(input.a.state[prop]) && isPropertyMergeable(input.b.state[prop])) {
-        result.state[prop] = mergeFunction(
-          input.a.state[prop].state,
-          input.a.state[prop].modifications,
-          input.b.state[prop].state,
-          input.b.state[prop].modifications
-        );
+        // console.log('attention! merging nested properties!', prop)
+        result.state[prop] = mergeFunction({
+          a: { state: input.a.state[prop].state, [modificationsKey]: input.a.state[prop][modificationsKey] },
+          b: { state: input.b.state[prop].state, [modificationsKey]: input.b.state[prop][modificationsKey] }
+        }, modificationsKey);
 
         continue
       }
 
+      // console.log('doing nuffing', prop, input.a.state[prop])
+
       // The property is on both sides the same
       if (hasKey(input.a.state, prop)) {
-        result.state[prop] = input.a.state[prop];
+        result.state[prop] = deepCopy(input.a.state[prop]);
       }
     }
+
+    result[modificationsKey] = result.mods;
+
+    delete result.mods;
 
     return result
   }
 
   class Mergeable {
     static get MODIFICATIONS_KEY () {
-      return '^m'
+      return '^M3Rg34bL3'
     }
 
     constructor (state, modifications) {
-      this._state = transformDump(state, property => {
-        const { state, modifications } = splitIntoStateAndModifications(property);
-
-        return new Mergeable(state, modifications)
-      });
-
+      this._state = transformDump(state, property => createMergeableFromDump(property));
       this._modifications = modifications;
     }
 
@@ -125,6 +125,11 @@
 
     set (key, value, date) {
       this._state[key] = value;
+      this._modifications[key] = newDate(date);
+    }
+
+    modify (key, fn, date) {
+      this._state[key] = fn(this._state[key]);
       this._modifications[key] = newDate(date);
     }
 
@@ -202,17 +207,40 @@
       return new Mergeable(deepCopy(this._state), { ...this._modifications })
     }
 
-    merge (stateB) {
-      const result = mergeFunction(this._state, this._modifications, stateB._state, stateB._modifications);
+    merge (docB) {
+      if (!(docB instanceof Mergeable)) {
+        throw TypeError('Only instances of Mergeable can be merged')
+      }
 
-      this._state = result.state;
-      this._modifications = result.modifications;
+      const result = mergeFunction(
+        { a: isolatedDump(this), b: isolatedDump(docB) },
+        Mergeable.MODIFICATIONS_KEY
+      );
+
+      this._state = transformDump(result.state, property => createMergeableFromIsolatedDump(property));
+      this._modifications = result[Mergeable.MODIFICATIONS_KEY];
 
       return this
     }
   }
 
-  function splitIntoStateAndModifications (dump) {
+  /*
+   * I would really like to put these in another file, but that doesn't
+   * work cause of circular references (I need the Mergeable class in there)
+   */
+
+  function isolatedDump (doc) {
+    return {
+      state: transformInternalState(doc._state, property => isolatedDump(property)),
+      [Mergeable.MODIFICATIONS_KEY]: doc._modifications
+    }
+  }
+
+  function createMergeableFromIsolatedDump (dump) {
+    return new Mergeable(dump.state, dump[Mergeable.MODIFICATIONS_KEY])
+  }
+
+  function createMergeableFromDump (dump) {
     let modifications = {};
     const state = deepCopy(dump);
 
@@ -221,7 +249,7 @@
       delete state[Mergeable.MODIFICATIONS_KEY];
     }
 
-    return { modifications, state }
+    return new Mergeable(state, modifications)
   }
 
   /**
@@ -264,19 +292,22 @@
 
   const legibleMergeable = {
     create (dump) {
-      const { state, modifications } = splitIntoStateAndModifications(dump || {});
-
-      return new Mergeable(state, modifications)
+      return createMergeableFromDump(dump || {})
     },
 
     merge (docA, docB) {
       if (!(docA instanceof Mergeable) || !(docB instanceof Mergeable)) {
-        throw TypeError('One argument is not an instance of Mergeable')
+        throw TypeError('Only instances of Mergeable can be merged')
       }
 
-      const result = mergeFunction(docA._state, docA._modifications, docB._state, docB._modifications);
+      const result = mergeFunction({
+        a: isolatedDump(docA), b: isolatedDump(docB)
+      }, Mergeable.MODIFICATIONS_KEY);
 
-      return new Mergeable(deepCopy(result.state), result.modifications)
+      return new Mergeable(
+        transformDump(result.state, property => createMergeableFromIsolatedDump(property)),
+        result[Mergeable.MODIFICATIONS_KEY]
+      )
     }
   };
 
