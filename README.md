@@ -1,38 +1,41 @@
 # legibleMergeable
 
-Make an array with simple objects as items conflict-free mergeable. Simple means only JSON datatypes are allowed.
+In favor of simplicity rather than trying to take on everything, this library can make simple objects and its properties to a CRDT (Conflict-free Replicated Data Type). The output JSON is totally simple & legible. Among other things, because it doesn't keep a history.
 
-Not for use in production. I use it only in an app for my acquaintances and myself.
+> Not for use in production. I use it only in a private app.
 
-It doesn't matter in which order different customized states are applied (associativ, commutive and idompotent), conflicting changes will always be deterministically resolved. It will always prefer the newest change. Currently it uses UTC Timestamps for this, which is flawed and should probably be replaced by some logical clock or hybrid.
+It doesn't matter in which order different customized states are applied (associative, commutive and idompotent), conflicting changes will always be deterministically resolved. It will always prefer the newest change.
 
-The merge will not merge strings, it will only merge array additions, deletions and added, deleted and changed properties of the array objects. Currently a deletion of an array object always overwrites any modification inside the object.
+> Currently it uses UTC Timestamps for this, which is flawed and should probably be replaced by some logical clock or hybrid.
 
-When exporting the mergeable array or object as JSON it stays an array with objects which have additionally objects or properties and thus stays legible.
+The merge will not merge characters in strings, it will only merge added, deleted and changed properties. If you have nested Mergeables a deletion of a parent object always overwrites any (later) modification of the deleted child object.
 
-This is rather legible, isn't it?
+When exporting the Mergeable as JSON it stays an object and thus stays legible.
+
+Judge for yourself, this is rather legible (compared to other CRDTs):
 
 ```json
-[
-  {
+{
+  1: {
     "id": 1,
     "title": "Buy Sugar",
     "done": false,
     "^m": { "title": "2020-10-23T15:50:02.064Z" }
   },
-  {
+  2: {
     "id": 2,
     "title": "Change Lightbulb",
     "done": true,
     "^m": { "done": "2020-10-23T15:50:02.064Z" }
   },
-  {
-    "^m": { 1: "2020-10-21T10:00:00.000Z", 2: "2020-10-21T10:00:00.000Z" },
-  }
+  "^m": {
+    1: "2020-10-21T10:00:00.000Z",
+    2: "2020-10-21T10:00:00.000Z"
+  },
 ]
 ```
 
-Inside the array and object are properties included for modification dates as `^m`.
+Inside the objects is a property included for modification dates as `^m`. This is also used to detect a nested Mergeable. The child object gets only parsed and merged if the it has the identifier. The identifier can have an empty object.
 
 ## Usage MergeableArray
 
@@ -154,7 +157,7 @@ For an example implementation check out the `demo.html`.
 
 ```html
 <div v-for="item in list.state()"
-     :key="item.id()">
+     :key="item.get('id')">
     <input type="checkbox"
            :checked="item.get('done')"
            @change="item.set('done', $event.target.checked)" />
@@ -163,8 +166,7 @@ For an example implementation check out the `demo.html`.
            :value="item.get('title')"
            @input="item.set('title', $event.target.value)" />
 
-    <button class="item-delete"
-            @click="list.delete(item.id())">
+    <button @click="list.delete(item.id())">
         X
     </button>
 </div>
