@@ -23,19 +23,32 @@ export class Mergeable {
     return fallback
   }
 
-  set (key, value, date) {
+  set (key, value, options) {
+    options = options || {}
+
+    if (options.mergeable) {
+      value = createMergeableFromDump(value || {})
+    }
+
     this._state[key] = value
-    this._modifications[key] = util.newDate(date)
+    this._modifications[key] = util.newDate(options.date)
+
+    return this._state[key]
   }
 
-  modify (key, fn, date) {
-    this._state[key] = fn(this._state[key])
-    this._modifications[key] = util.newDate(date)
-  }
+  delete (key, options) {
+    options = options || {}
 
-  delete (key, date) {
     delete this._state[key]
-    this._modifications[key] = util.newDate(date)
+    this._modifications[key] = util.newDate(options.date)
+  }
+
+  modify (callback, options) {
+    options = options || {}
+
+    callback(createProxy(this, options))
+
+    return this
   }
 
   /*
@@ -187,4 +200,51 @@ export function transformDump (dump, transformInstanceFn) {
 
       return result
     }, {})
+}
+
+function createProxy (mergeable, options) {
+  return new Proxy(mergeable, {
+    get (target, key) {
+      if (key === 'length') {
+        return target.size()
+      }
+
+      const item = target._state[key]
+
+      if (item instanceof Mergeable) {
+        return createProxy(item, options)
+      }
+
+      return item
+    },
+
+    set (target, key, value) {
+      target.set(key, value, options)
+      return true
+    },
+
+    has (target, key) {
+      return target.has(key)
+    },
+
+    deleteProperty (target, key) {
+      target.delete(key, options)
+      return true
+    },
+
+    ownKeys (target) {
+      return Object.keys(target._state)
+    },
+
+    getOwnPropertyDescriptor (target, key) {
+      if (target.has(key)) {
+        return {
+          enumerable: true,
+          configurable: true,
+          writable: true,
+          value: target.get(key)
+        }
+      }
+    }
+  })
 }

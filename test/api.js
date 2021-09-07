@@ -59,8 +59,8 @@ describe('api', function () {
         price: 140
       })
 
-      item.set('price', 135, date)
-      item.set('isOpen', false, date)
+      item.set('price', 135, { date })
+      item.set('isOpen', false, { date })
 
       const dump = item.dump()
       const changes = dump[MODIFICATIONS_KEY]
@@ -127,11 +127,11 @@ describe('api', function () {
       const item = legibleMergeable.create(original)
 
       if (item.get('price') > 200) {
-        item.set('name', 'Almondmilk', date)
-        item.delete('isOpen', date)
+        item.set('name', 'Almondmilk', { date })
+        item.delete('isOpen', { date })
       }
       if (!item.has('isOpen')) {
-        item.set('isCold', true, date)
+        item.set('isCold', true, { date })
       }
 
       const dump = item.dump()
@@ -169,9 +169,9 @@ describe('api', function () {
 
       const replicaB = replicaA.clone()
       const date = newDate('2020-08-04')
-      replicaB.set('name', 'Almondmilk', date)
-      replicaB.set('isCold', false, date)
-      replicaB.delete('price', date)
+      replicaB.set('name', 'Almondmilk', { date })
+      replicaB.set('isCold', false, { date })
+      replicaB.delete('price', { date })
 
       const replicaC1 = legibleMergeable.merge(replicaA, replicaB)
       const replicaC2 = replicaB.merge(replicaA)
@@ -276,7 +276,7 @@ describe('api', function () {
         },
 
         3: {
-          name: 'Crime', price: 7.0, authors: [], [MOD_KEY]: { name: '2021-07-07', price: '2021-07-14' }
+          name: 'Crime', price: 7.0, authors: ['Donald'], [MOD_KEY]: { name: '2021-07-07', price: '2021-07-14' }
         },
 
         noMergePlease: { name: 'Not mergeable' },
@@ -286,12 +286,12 @@ describe('api', function () {
       const replicaClone = replicaOriginal.clone()
       const date = '2021-08-10'
 
-      replicaClone.get(2).set('authors', ['Bob'], date)
-      replicaClone.delete(2, date)
-      replicaClone.get(1).set('name', 'Scifi', date)
-      replicaClone.get(3).modify('price', price => price * 0.9, date)
-      replicaClone.get(3).modify('authors', authors => { authors.push('Daisy'); return authors }, date)
-      replicaClone.get('3').delete('name', date)
+      replicaClone.get(2).set('authors', ['Bob'], { date })
+      replicaClone.delete(2, { date })
+      replicaClone.get(1).set('name', 'Scifi', { date })
+      replicaClone.get(3).modify(ob => (ob.price = ob.price * 0.9), { date })
+      replicaClone.get(3).modify(ob => (ob.authors = [...ob.authors, 'Daisy']), { date })
+      replicaClone.get('3').delete('name', { date })
 
       const replicaResultStatic = legibleMergeable.merge(replicaOriginal, replicaClone)
       const replicaResult = replicaClone.merge(replicaOriginal)
@@ -304,7 +304,7 @@ describe('api', function () {
         },
 
         3: {
-          price: 6.3, authors: ['Daisy'], [MOD_KEY]: { name: '2021-08-10', price: '2021-08-10', authors: '2021-08-10' }
+          price: 6.3, authors: ['Donald', 'Daisy'], [MOD_KEY]: { name: '2021-08-10', price: '2021-08-10', authors: '2021-08-10' }
         },
 
         noMergePlease: { name: 'Not mergeable' },
@@ -314,5 +314,74 @@ describe('api', function () {
       expect(replicaResultStatic).to.eql(replicaResult)
       expect(dump).to.eql(expected)
     })
+  })
+
+  it('proxy', function () {
+    const task = legibleMergeable.create({
+      title: 'Life Support',
+      done: false,
+      daysUntilWeekend: ['Friday'],
+      foo: {},
+      subtasks: legibleMergeable.create({
+        1: legibleMergeable.create({ title: 'Shower', done: false }),
+        eat: { title: 'Eat', done: false, ingredients: ['Pasta'] },
+        3: { title: 'Sleep', done: false }
+      })
+    })
+
+    const MOD_KEY = MODIFICATIONS_KEY
+    const date = '2021-09-07'
+
+    task.modify(task => {
+      task.subtasks[4] = legibleMergeable.create({ title: 'Code' })
+      task.subtasks[1].title = task.subtasks[1].title + '!'
+
+      for (const id in task.subtasks) {
+        task.subtasks[id].done = true
+      }
+
+      // Array functions are still available
+      task.subtasks.eat.ingredients.push('Tofu')
+
+      const subtasks = task.subtasks
+
+      // This is expected behaviour, but may be confusing: The following change
+      // don't trigger a modification date, cause it happens in its own object
+      // scope. Removing the element of an array is the same as changing the
+      // property of a nested Mergeable, where the parent also doesn't track
+      // the change.
+      task.daysUntilWeekend.shift()
+      task.foo.bar = 'foo bar'
+      // You would need to do an assignment to track it
+      task.foo = {}
+
+      if (3 in subtasks) {
+        delete subtasks[3]
+      }
+
+      const isAllDone = Object.values(subtasks).filter(t => t.done).length === task.subtasks.length
+
+      if (isAllDone) {
+        task.done = true
+      }
+    }, { date })
+
+    const expected = {
+      title: 'Life Support',
+      done: true,
+      daysUntilWeekend: [],
+      foo: {},
+      subtasks: {
+        1: { title: 'Shower!', done: true, [MOD_KEY]: { title: '2021-09-07', done: '2021-09-07' } },
+        4: { title: 'Code', done: true, [MOD_KEY]: { done: '2021-09-07' } },
+        eat: { title: 'Eat', done: true, ingredients: ['Pasta', 'Tofu'] },
+        [MOD_KEY]: { 3: '2021-09-07', 4: '2021-09-07' }
+      },
+      [MOD_KEY]: { done: '2021-09-07', foo: '2021-09-07' }
+    }
+
+    expect(task.dump()).to.eql(expected)
+    // console.log(task.dump())
+    // console.log(task.get('subtasks').dump())
   })
 })

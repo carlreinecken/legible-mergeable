@@ -123,25 +123,39 @@
       return fallback
     }
 
-    set (key, value, date) {
+    set (key, value, options) {
+      options = options || {};
+
+      if (options.mergeable) {
+        value = createMergeableFromDump(value || {});
+      }
+
       this._state[key] = value;
-      this._modifications[key] = newDate(date);
+      this._modifications[key] = newDate(options.date);
+
+      return this._state[key]
     }
 
-    modify (key, fn, date) {
-      this._state[key] = fn(this._state[key]);
-      this._modifications[key] = newDate(date);
+    modify (callback, options) {
+      options = options || {};
+
+      callback(createProxy(this, options));
+
+      return this
     }
 
-    delete (key, date) {
+    delete (key, options) {
+      options = options || {};
+
       delete this._state[key];
-      this._modifications[key] = newDate(date);
+      this._modifications[key] = newDate(options.date);
     }
 
     /*
      * Returns a proxy to make it possible to directly work on the state.
      * Useful for e.g. the vue v-model.
-     * TODO: check practicability
+     * TODO: check practicability. Is sadly really buggy with Vue... Get's stuck
+     * when property of state is not present when the proxy is created (? look at HTML demo).
      */
     get use () {
       return new Proxy(this, {
@@ -166,9 +180,7 @@
     }
 
     /*
-     * Not serialized state with all MergeableObject. Only manipulate the objects
-     * with this, changes to the array are not persisted.
-     * TODO: add test
+     * Only use this when you need to iterate over all properties, to work on them
      */
     state () {
       return { ...this._state }
@@ -288,6 +300,53 @@
 
         return result
       }, {})
+  }
+
+  function createProxy (mergeable, options) {
+    return new Proxy(mergeable, {
+      get (target, key) {
+        if (key === 'length') {
+          return target.size()
+        }
+
+        const item = target._state[key];
+
+        if (item instanceof Mergeable) {
+          return createProxy(item, options)
+        }
+
+        return item
+      },
+
+      set (target, key, value) {
+        target.set(key, value, options);
+        return true
+      },
+
+      has (target, key) {
+        return target.has(key)
+      },
+
+      deleteProperty (target, key) {
+        target.delete(key, options);
+        return true
+      },
+
+      ownKeys (target) {
+        return Object.keys(target._state)
+      },
+
+      getOwnPropertyDescriptor (target, key) {
+        if (target.has(key)) {
+          return {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: target.get(key)
+          }
+        }
+      }
+    })
   }
 
   const legibleMergeable = {

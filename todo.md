@@ -89,3 +89,15 @@ may this even be a case where i should extend Mergeable for smthng like Mergeabl
 then i could overwrite all the imprtant functions. include a `_order` property, which is just handled as primitive value and represents the order of the top level as an array of identifiers. reorder() just takes a list of ids in their represantative order and sets the modification date
 
 for merging i would need to inject the order into the state.. thats disgusting oO
+
+```javascript
+arrayToObject (array, customIndex) {
+return array.reduce((acc, value, i) => {
+  const key = customIndex == null ? i : customIndex
+
+  acc[value[key]] = value
+
+  return acc
+}, {})
+}
+```
