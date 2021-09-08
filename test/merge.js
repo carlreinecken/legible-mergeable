@@ -1,12 +1,13 @@
 const expect = require('chai').expect
 
-const mergeFunction = require('../dist/legible-mergeable.js').mergeFunction
-const MODS_KEY = require('../dist/legible-mergeable.js').Mergeable.MODIFICATIONS_KEY
+const legibleMergeable = require('../dist/legible-mergeable.js')
+const mergeFunction = legibleMergeable._mergeFunction
+const MODS_KEY = legibleMergeable.Mergeable.MODIFICATIONS_KEY
 
 /* eslint-disable no-unused-expressions */
 
 function merge (a, b) {
-  return mergeFunction({ a, b }, MODS_KEY)
+  return mergeFunction({ a, b })
 }
 
 describe('merge objects', function () {

@@ -1,17 +1,9 @@
-import mergeFunction from './merge-function'
-import {
-  Mergeable,
-  createMergeableFromDump,
-  createMergeableFromIsolatedDump,
-  isolatedDump,
-  transformDump
-} from './Mergeable.class'
+import { mergeFunction } from './merge-function'
+import { Mergeable } from './Mergeable.class'
 
-export { mergeFunction, Mergeable }
-
-export const legibleMergeable = {
+export default {
   create (dump) {
-    return createMergeableFromDump(dump || {})
+    return Mergeable.createFromDump(dump)
   },
 
   merge (docA, docB) {
@@ -19,13 +11,10 @@ export const legibleMergeable = {
       throw TypeError('Only instances of Mergeable can be merged')
     }
 
-    const result = mergeFunction({
-      a: isolatedDump(docA), b: isolatedDump(docB)
-    }, Mergeable.MODIFICATIONS_KEY)
+    return docA.clone().merge(docB)
+  },
 
-    return new Mergeable(
-      transformDump(result.state, property => createMergeableFromIsolatedDump(property)),
-      result[Mergeable.MODIFICATIONS_KEY]
-    )
-  }
+  _mergeFunction: mergeFunction,
+
+  Mergeable: Mergeable
 }

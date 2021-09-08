@@ -80,7 +80,7 @@ list.set(['devs', 2, 'name'], 'Gustav')
 
 should not be part of core. nevertheless i'm not sure if i should not at least offer some helper methods
 
-const list = legibeMergeable.fromArray([ d1, d2, { ^m: { 1: ..., 'order': date } } ], 'id' )
+const list = legibleMergeable.fromArray([ d1, d2, { ^m: { 1: ..., 'order': date } } ], 'id' )
 
 list.dumpAsArray() or just dump()
 

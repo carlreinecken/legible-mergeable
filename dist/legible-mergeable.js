@@ -1,8 +1,8 @@
 (function (global, factory) {
-  typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
-  typeof define === 'function' && define.amd ? define(['exports'], factory) :
-  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.legibleMergeable = {}));
-}(this, (function (exports) { 'use strict';
+  typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
+  typeof define === 'function' && define.amd ? define(factory) :
+  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.legibleMergeable = factory());
+}(this, (function () { 'use strict';
 
   function hasKey (object, key) {
     return Object.prototype.hasOwnProperty.call(object, key)
@@ -25,14 +25,28 @@
     return [...new Set(array)]
   }
 
-  function mergeFunction ({ a: docA, b: docB }, modificationsKey) {
+  class AbstractMergeable {
+    static get MODIFICATIONS_KEY () {
+      return '^M3Rg34bL3'
+    }
+
+    constructor () {
+      if (this.constructor === AbstractMergeable) {
+        throw new Error('Can\'t instantiate the abstract class AbstractMergeable!')
+      }
+    }
+  }
+
+  const MOD_KEY = AbstractMergeable.MODIFICATIONS_KEY;
+
+  function mergeFunction ({ a: docA, b: docB }) {
     function isPropertyMergeable (property) {
-      return isObject(property) && isObject(property[modificationsKey])
+      return isObject(property) && isObject(property[MOD_KEY])
     }
 
     const input = {
-      a: { state: docA.state, mods: docA[modificationsKey] },
-      b: { state: docB.state, mods: docB[modificationsKey] }
+      a: { state: docA.state, mods: docA[MOD_KEY] },
+      b: { state: docB.state, mods: docB[MOD_KEY] }
     };
 
     const result = { state: {}, mods: {} };
@@ -77,16 +91,13 @@
 
       // Call the merge function recursively if both properties are mergeables
       if (isPropertyMergeable(input.a.state[prop]) && isPropertyMergeable(input.b.state[prop])) {
-        // console.log('attention! merging nested properties!', prop)
         result.state[prop] = mergeFunction({
-          a: { state: input.a.state[prop].state, [modificationsKey]: input.a.state[prop][modificationsKey] },
-          b: { state: input.b.state[prop].state, [modificationsKey]: input.b.state[prop][modificationsKey] }
-        }, modificationsKey);
+          a: { state: input.a.state[prop].state, [MOD_KEY]: input.a.state[prop][MOD_KEY] },
+          b: { state: input.b.state[prop].state, [MOD_KEY]: input.b.state[prop][MOD_KEY] }
+        });
 
         continue
       }
-
-      // console.log('doing nuffing', prop, input.a.state[prop])
 
       // The property is on both sides the same
       if (hasKey(input.a.state, prop)) {
@@ -94,21 +105,141 @@
       }
     }
 
-    result[modificationsKey] = result.mods;
+    result[MOD_KEY] = result.mods;
 
     delete result.mods;
 
     return result
   }
 
-  class Mergeable {
-    static get MODIFICATIONS_KEY () {
-      return '^M3Rg34bL3'
+  function createProxy (mergeable, options) {
+    return new Proxy(mergeable, {
+      get (target, key) {
+        const item = target._state[key];
+
+        if (item instanceof AbstractMergeable) {
+          return createProxy(item, options)
+        }
+
+        // I'm to be honest not sure if I want/need to support this.
+        // With it you could modify an object or an array one level deeper
+        // and it gets tracked. Though it's not recursive.
+        // TODO: Research need and perfomance impact
+        // https://stackoverflow.com/questions/41299642/how-to-use-javascript-proxy-for-nested-objects
+        // https://stackoverflow.com/questions/36372611/how-to-test-if-an-object-is-a-proxy
+        // if (typeof item === 'object' && item != null) {
+        //   return new Proxy(item, {
+        //     set (objectTarget, objectKey, objectValue) {
+        //       objectTarget[objectKey] = objectValue
+        //       mergeable.refresh(key, options)
+        //       return true
+        //     }
+        //   })
+        // }
+
+        // // eslint-disable-next-line
+        // if (!(key in target._state) && Vue) {
+        //   // eslint-disable-next-line
+        //   Vue.set(target._state, key, null)
+        // }
+
+        return item
+      },
+
+      set (target, key, value) {
+        target.set(key, value, options);
+        return true
+      },
+
+      has (target, key) {
+        return target.has(key)
+      },
+
+      deleteProperty (target, key) {
+        target.delete(key, options);
+        return true
+      },
+
+      ownKeys (target) {
+        return Object.keys(target._state)
+      },
+
+      getOwnPropertyDescriptor (target, key) {
+        if (target.has(key)) {
+          return {
+            enumerable: true,
+            configurable: true,
+            writable: true,
+            value: target.get(key)
+          }
+        }
+      }
+    })
+  }
+
+  /**
+   * Transform a given internal state.
+   * If the instance is found it gets transformed via the given callback
+   */
+  function transformInternalState (state, transformInstanceFn) {
+    return Object
+      .entries(state)
+      .reduce((result, [identifier, property]) => {
+        if (typeof property !== 'object') {
+          result[identifier] = property;
+        } else if (property instanceof AbstractMergeable) {
+          result[identifier] = transformInstanceFn(property);
+        } else {
+          result[identifier] = deepCopy(property);
+        }
+
+        return result
+      }, {})
+  }
+
+  /**
+   * Transform a given dumped (raw) object.
+   * If the instance is found it gets transformed via the given callback
+   */
+  function transformDump (dump, transformInstanceFn) {
+    return Object
+      .entries(dump)
+      .reduce((result, [identifier, property]) => {
+        if (isObject(property) && isObject(property[AbstractMergeable.MODIFICATIONS_KEY])) {
+          result[identifier] = transformInstanceFn(property);
+        } else {
+          result[identifier] = property;
+        }
+
+        return result
+      }, {})
+  }
+
+  function mapMergeableToMergeObject (doc) {
+    return {
+      state: transformInternalState(doc._state, property => mapMergeableToMergeObject(property)),
+      [AbstractMergeable.MODIFICATIONS_KEY]: doc._modifications
+    }
+  }
+
+  class Mergeable extends AbstractMergeable {
+    constructor (state, modifications) {
+      super();
+
+      this._state = transformDump(state, property => Mergeable.createFromDump(property));
+      this._modifications = modifications;
     }
 
-    constructor (state, modifications) {
-      this._state = transformDump(state, property => createMergeableFromDump(property));
-      this._modifications = modifications;
+    static createFromDump (dump) {
+      let modifications = {};
+      const state = deepCopy(dump || {});
+
+      if (hasKey(state, Mergeable.MODIFICATIONS_KEY)) {
+        modifications = state[Mergeable.MODIFICATIONS_KEY];
+        delete state[Mergeable.MODIFICATIONS_KEY];
+      }
+
+      return new Mergeable(state, modifications)
     }
 
     has (key) {
@@ -123,25 +254,23 @@
       return fallback
     }
 
+    refresh (key, options) {
+      options = options || {};
+
+      this._modifications[key] = newDate(options.date);
+    }
+
     set (key, value, options) {
       options = options || {};
 
       if (options.mergeable) {
-        value = createMergeableFromDump(value || {});
+        value = Mergeable.createFromDump(value);
       }
 
       this._state[key] = value;
       this._modifications[key] = newDate(options.date);
 
       return this._state[key]
-    }
-
-    modify (callback, options) {
-      options = options || {};
-
-      callback(createProxy(this, options));
-
-      return this
     }
 
     delete (key, options) {
@@ -151,28 +280,12 @@
       this._modifications[key] = newDate(options.date);
     }
 
-    /*
-     * Returns a proxy to make it possible to directly work on the state.
-     * Useful for e.g. the vue v-model.
-     * TODO: check practicability. Is sadly really buggy with Vue... Get's stuck
-     * when property of state is not present when the proxy is created (? look at HTML demo).
-     */
-    get use () {
-      return new Proxy(this, {
-        get (target, prop) {
-          return target._state[prop]
-        },
+    modify (callback, options) {
+      options = options || {};
 
-        set (target, prop, value) {
-          target.set(prop, value);
-          return true
-        },
+      callback(createProxy(this, options));
 
-        deleteProperty (target, prop) {
-          target.delete(prop);
-          return true
-        }
-      })
+      return this
     }
 
     size () {
@@ -224,134 +337,68 @@
         throw TypeError('Only instances of Mergeable can be merged')
       }
 
-      const result = mergeFunction(
-        { a: isolatedDump(this), b: isolatedDump(docB) },
-        Mergeable.MODIFICATIONS_KEY
-      );
+      const result = mergeFunction({ a: mapMergeableToMergeObject(this), b: mapMergeableToMergeObject(docB) });
 
-      this._state = transformDump(result.state, property => createMergeableFromIsolatedDump(property));
+      this._state = transformDump(result.state, dump => new Mergeable(dump.state, dump[Mergeable.MODIFICATIONS_KEY]));
       this._modifications = result[Mergeable.MODIFICATIONS_KEY];
 
       return this
     }
-  }
 
-  /*
-   * I would really like to put these in another file, but that doesn't
-   * work cause of circular references (I need the Mergeable class in there)
-   */
+    filter (callback, options) {
+      options = options || {};
 
-  function isolatedDump (doc) {
-    return {
-      state: transformInternalState(doc._state, property => isolatedDump(property)),
-      [Mergeable.MODIFICATIONS_KEY]: doc._modifications
-    }
-  }
+      let entries = Object.entries(this._state);
 
-  function createMergeableFromIsolatedDump (dump) {
-    return new Mergeable(dump.state, dump[Mergeable.MODIFICATIONS_KEY])
-  }
-
-  function createMergeableFromDump (dump) {
-    let modifications = {};
-    const state = deepCopy(dump);
-
-    if (hasKey(state, Mergeable.MODIFICATIONS_KEY)) {
-      modifications = state[Mergeable.MODIFICATIONS_KEY];
-      delete state[Mergeable.MODIFICATIONS_KEY];
-    }
-
-    return new Mergeable(state, modifications)
-  }
-
-  /**
-   * Transform a given internal state.
-   * If the instance is found it gets transformed via the given callback
-   */
-  function transformInternalState (state, transformInstanceFn) {
-    return Object
-      .entries(state)
-      .reduce((result, [identifier, property]) => {
-        if (typeof property !== 'object') {
-          result[identifier] = property;
-        } else if (property instanceof Mergeable) {
-          result[identifier] = transformInstanceFn(property);
-        } else {
-          result[identifier] = deepCopy(property);
-        }
-
-        return result
-      }, {})
-  }
-
-  /**
-   * Transform a given dumped (raw) object.
-   * If the instance is found it gets transformed via the given callback
-   */
-  function transformDump (dump, transformInstanceFn) {
-    return Object
-      .entries(dump)
-      .reduce((result, [identifier, property]) => {
-        if (isObject(property) && isObject(property[Mergeable.MODIFICATIONS_KEY])) {
-          result[identifier] = transformInstanceFn(property);
-        } else {
-          result[identifier] = property;
-        }
-
-        return result
-      }, {})
-  }
-
-  function createProxy (mergeable, options) {
-    return new Proxy(mergeable, {
-      get (target, key) {
-        if (key === 'length') {
-          return target.size()
-        }
-
-        const item = target._state[key];
-
-        if (item instanceof Mergeable) {
-          return createProxy(item, options)
-        }
-
-        return item
-      },
-
-      set (target, key, value) {
-        target.set(key, value, options);
-        return true
-      },
-
-      has (target, key) {
-        return target.has(key)
-      },
-
-      deleteProperty (target, key) {
-        target.delete(key, options);
-        return true
-      },
-
-      ownKeys (target) {
-        return Object.keys(target._state)
-      },
-
-      getOwnPropertyDescriptor (target, key) {
-        if (target.has(key)) {
-          return {
-            enumerable: true,
-            configurable: true,
-            writable: true,
-            value: target.get(key)
+      if (options.proxy === true) {
+        entries = entries.map(([key, value]) => {
+          if (value instanceof Mergeable) {
+            return [key, createProxy(value)]
           }
-        }
+
+          return [key, value]
+        });
       }
-    })
+
+      return entries
+        .filter(([key, value]) => {
+          return callback(value, key, this._modifications[key])
+        })
+        .reduce((result, [key, value]) => {
+          result[key] = value;
+          return result
+        }, {})
+    }
+
+    map (callback, options) {
+      options = options || {};
+
+      return Object
+        .entries(this._state)
+        .map(([key, value]) => {
+          if (options.proxy === true && value instanceof Mergeable) {
+            value = createProxy(value);
+          }
+
+          return [key, callback(value, key, this._modifications[key])]
+        })
+        .reduce((result, [key, value]) => {
+          result[key] = value;
+          return result
+        }, {})
+    }
+
+    /*
+     * Experimental
+     */
+    get _proxy () {
+      return createProxy(this)
+    }
   }
 
-  const legibleMergeable = {
+  var legibleMergeable = {
     create (dump) {
-      return createMergeableFromDump(dump || {})
+      return Mergeable.createFromDump(dump)
     },
 
     merge (docA, docB) {
@@ -359,21 +406,14 @@
         throw TypeError('Only instances of Mergeable can be merged')
       }
 
-      const result = mergeFunction({
-        a: isolatedDump(docA), b: isolatedDump(docB)
-      }, Mergeable.MODIFICATIONS_KEY);
+      return docA.clone().merge(docB)
+    },
 
-      return new Mergeable(
-        transformDump(result.state, property => createMergeableFromIsolatedDump(property)),
-        result[Mergeable.MODIFICATIONS_KEY]
-      )
-    }
+    _mergeFunction: mergeFunction,
+
+    Mergeable: Mergeable
   };
 
-  exports.Mergeable = Mergeable;
-  exports.legibleMergeable = legibleMergeable;
-  exports.mergeFunction = mergeFunction;
-
-  Object.defineProperty(exports, '__esModule', { value: true });
+  return legibleMergeable;
 
 })));

@@ -1,8 +1,9 @@
 const expect = require('chai').expect
 
-const legibleMergeable = require('../dist/legible-mergeable.js').legibleMergeable
-const Mergeable = require('../dist/legible-mergeable.js').Mergeable
+const legibleMergeable = require('../dist/legible-mergeable.js')
+const Mergeable = legibleMergeable.Mergeable
 const MODIFICATIONS_KEY = Mergeable.MODIFICATIONS_KEY
+const MOD_KEY = MODIFICATIONS_KEY
 
 const newDate = date => (new Date(date)).toISOString()
 
@@ -87,9 +88,9 @@ describe('api', function () {
         price: 140
       })
 
-      item.use.price = 42
-      item.use.isOpen = true
-      delete item.use.name
+      item._proxy.price = 42
+      item._proxy.isOpen = true
+      delete item._proxy.name
 
       const dump = item.dump()
       const changes = dump[MODIFICATIONS_KEY]
@@ -102,9 +103,9 @@ describe('api', function () {
       }
 
       expect(dump).to.eql(expected)
-      expect(item.use.isOpen).to.eql(true)
-      expect(item.use.price).to.eql(42)
-      expect(item.use.name).to.be.undefined
+      expect(item._proxy.isOpen).to.eql(true)
+      expect(item._proxy.price).to.eql(42)
+      expect(item._proxy.name).to.be.undefined
       expect(changes.isOpen).to.be.not.null
       expect(changes.price).to.be.not.null
       expect(changes.name).to.be.not.null
@@ -264,8 +265,6 @@ describe('api', function () {
     })
 
     it('merge', function () {
-      const MOD_KEY = MODIFICATIONS_KEY
-
       const replicaOriginal = legibleMergeable.create({
         1: {
           name: 'Thriller', price: 9.99, authors: ['Peter'], [MOD_KEY]: { name: '2021-08-03', price: '2021-08-01' }
@@ -329,7 +328,6 @@ describe('api', function () {
       })
     })
 
-    const MOD_KEY = MODIFICATIONS_KEY
     const date = '2021-09-07'
 
     task.modify(task => {
@@ -359,7 +357,8 @@ describe('api', function () {
         delete subtasks[3]
       }
 
-      const isAllDone = Object.values(subtasks).filter(t => t.done).length === task.subtasks.length
+      const subtaskValues = Object.values(subtasks)
+      const isAllDone = subtaskValues.filter(t => t.done).length === subtaskValues.length
 
       if (isAllDone) {
         task.done = true
@@ -381,7 +380,47 @@ describe('api', function () {
     }
 
     expect(task.dump()).to.eql(expected)
-    // console.log(task.dump())
-    // console.log(task.get('subtasks').dump())
+  })
+
+  describe('array like functions', function () {
+    it('filter simple state', function () {
+      const doc = legibleMergeable.create({ 0: 'Abc', 1: 'df', 2: 'g', 3: '' })
+
+      const filteredByStringLength = doc.filter(item => item.length > 1)
+      const filteredById = doc.filter((_, key) => key > 1)
+
+      expect(filteredByStringLength).to.be.eql({ 0: 'Abc', 1: 'df' })
+      expect(filteredById).to.be.eql({ 2: 'g', 3: '' })
+    })
+
+    it('filter nested', function () {
+      const doc = legibleMergeable.create()
+      doc.set(100, { age: 12 }, { mergeable: false })
+      doc.set(101, { age: 23 }, { mergeable: true })
+      doc.set(102, { age: 72 }, { mergeable: true })
+
+      const filteredNormal = doc.filter(item => item.age % 3 === 0, { proxy: false })
+      const filteredWithProxy = doc.filter(item => item.age % 3 === 0, { proxy: true })
+
+      expect(filteredNormal).to.be.eql({ 100: { age: 12 } })
+      expect(filteredWithProxy).to.be.eql({ 100: { age: 12 }, 102: { age: 72 } })
+    })
+
+    it('filter by modification date')
+
+    it('map nested', function () {
+      const doc = legibleMergeable.create({
+        hqm: { base: 2, multiplier: 3, [MOD_KEY]: {} },
+        owz: { base: -56, multiplier: 0.9, [MOD_KEY]: {} },
+        vpt: { base: 7, multiplier: 21, [MOD_KEY]: {} },
+        hox: { base: 24, multiplier: 2 }
+      })
+
+      const mappedNormal = doc.map(item => item.base * item.multiplier, { proxy: false })
+      const mappedWithProxy = doc.map(item => item.base * item.multiplier, { proxy: true })
+
+      expect(mappedNormal).to.be.eql({ hox: 48, hqm: NaN, owz: NaN, vpt: NaN })
+      expect(mappedWithProxy).to.be.eql({ hox: 48, hqm: 6, owz: -50.4, vpt: 147 })
+    })
   })
 })

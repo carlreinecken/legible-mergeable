@@ -1,13 +1,16 @@
 import * as util from './util'
+import { AbstractMergeable } from './AbstractMergeable.class'
 
-export default function mergeFunction ({ a: docA, b: docB }, modificationsKey) {
+const MOD_KEY = AbstractMergeable.MODIFICATIONS_KEY
+
+export function mergeFunction ({ a: docA, b: docB }) {
   function isPropertyMergeable (property) {
-    return util.isObject(property) && util.isObject(property[modificationsKey])
+    return util.isObject(property) && util.isObject(property[MOD_KEY])
   }
 
   const input = {
-    a: { state: docA.state, mods: docA[modificationsKey] },
-    b: { state: docB.state, mods: docB[modificationsKey] }
+    a: { state: docA.state, mods: docA[MOD_KEY] },
+    b: { state: docB.state, mods: docB[MOD_KEY] }
   }
 
   const result = { state: {}, mods: {} }
@@ -52,16 +55,13 @@ export default function mergeFunction ({ a: docA, b: docB }, modificationsKey) {
 
     // Call the merge function recursively if both properties are mergeables
     if (isPropertyMergeable(input.a.state[prop]) && isPropertyMergeable(input.b.state[prop])) {
-      // console.log('attention! merging nested properties!', prop)
       result.state[prop] = mergeFunction({
-        a: { state: input.a.state[prop].state, [modificationsKey]: input.a.state[prop][modificationsKey] },
-        b: { state: input.b.state[prop].state, [modificationsKey]: input.b.state[prop][modificationsKey] }
-      }, modificationsKey)
+        a: { state: input.a.state[prop].state, [MOD_KEY]: input.a.state[prop][MOD_KEY] },
+        b: { state: input.b.state[prop].state, [MOD_KEY]: input.b.state[prop][MOD_KEY] }
+      })
 
       continue
     }
-
-    // console.log('doing nuffing', prop, input.a.state[prop])
 
     // The property is on both sides the same
     if (util.hasKey(input.a.state, prop)) {
@@ -69,7 +69,7 @@ export default function mergeFunction ({ a: docA, b: docB }, modificationsKey) {
     }
   }
 
-  result[modificationsKey] = result.mods
+  result[MOD_KEY] = result.mods
 
   delete result.mods
 

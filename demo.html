@@ -102,6 +102,8 @@
                 Stop Sending
             </button>
 
+            <!-- <button @click="init">Init</button> -->
+
             <br /><br />
 
             <div class="clients" :key="change" :class="{sendMode: sendFrom != null}">
@@ -127,17 +129,24 @@
                     </div>
 
                     <div class="item"
-                         v-for="item in client.list.state()"
+                         v-for="item in client.list.filter(m => m)"
                          :key="client.name + item.get('id')"
                          :title="'Id: ' + item.get('id')">
                         <input type="checkbox"
                                class="item-done"
-                               :checked="item.get('done')"
-                               @change="item.set('done', $event.target.checked)" />
+                               v-model="item._proxy.done" />
 
-                        <input type="text"
-                               :value="item.get('title')"
-                               @input="item.set('title', $event.target.value)" />
+                        <div>
+                            <!-- the proxy is only completely reactive when the list item -->
+                            <!-- existed already in the list it was cloned from -->
+                            <input type="text" v-model="item._proxy.title" />
+                            <!-- <input type="text" v-model="item._proxy.title" /> -->
+                            <!-- <input type="text" -->
+                            <!--        :value="item.get('title')" -->
+                            <!--        @input="item.set('title', $event.target.value)" /> -->
+                            {{ item }}
+                        </div>
+
                         <button class="item-delete"
                                 @click="deleteItem(clientIndex, item.get('id'))">
                             X
@@ -160,28 +169,30 @@ const app = new Vue({
         sendFrom: null,
         clients: [],
         names: ['Alice', 'Bob', 'Carol', 'Dave', 'Eric', 'Florence'],
-        change: 0
+        change: 0,
     },
 
-    mounted () {
-        this.addClient()
-
-        const index = 0
-        this.clients[index].newItemInput = 'Change Lightbulb'
-        this.addItem(index)
-        this.clients[index].newItemInput = 'Cook spicy meal'
-        this.addItem(index)
+    async mounted () {
+        this.init()
     },
 
     methods: {
+        async init () {
+            this.addClient(legibleMergeable.create())
+
+            const index = 0
+            this.clients[index].newItemInput = 'Change Lightbulb'
+            this.addItem(index)
+            this.clients[index].newItemInput = 'Cook spicy meal'
+            this.addItem(index)
+        },
+
         addClient (list) {
             const name = (this.names.length > 0) ? this.names.shift() : prompt('Client Name')
+
             if (!name) return
-            this.clients.push({
-                name,
-                newItemInput: '',
-                list: list || legibleMergeable.legibleMergeable.create()
-            })
+
+            this.clients.push({ name, newItemInput: '', list })
         },
 
         cloneClient (clientIndex) {
@@ -207,11 +218,15 @@ const app = new Vue({
         addItem (clientIndex) {
             const id = randomId(10)
 
-            this.clients[clientIndex].list.set(id, legibleMergeable.legibleMergeable.create({
+            // the mergeable proxy gets only be fully reactive if the new item
+            // is registered to the vues reactivity system
+            const item = Vue.observable(legibleMergeable.create({
                 id,
                 done: false,
                 title: this.clients[clientIndex].newItemInput
             }))
+
+            this.clients[clientIndex].list.set(id, item)
 
             this.clients[clientIndex].newItemInput = ''
 
@@ -221,6 +236,7 @@ const app = new Vue({
         deleteItem (clientIndex, id) {
             this.clients[clientIndex].list.delete(id)
 
+            // i think i can stop using the change and start using Vue.delete or something like that.
             this.change++
         }
     }
