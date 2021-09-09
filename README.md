@@ -12,7 +12,7 @@ The merge will not merge characters in strings, it will only merge added, delete
 
 When exporting the Mergeable as JSON it stays an object and thus stays legible.
 
-Judge for yourself, this is rather legible (compared to other CRDTs):
+Judge for yourself, I gather this is rather legible:
 
 ```json
 {
@@ -37,7 +37,54 @@ Judge for yourself, this is rather legible (compared to other CRDTs):
 
 Inside the objects is a property included for modification dates as `^m`. This is also used to detect a nested Mergeable. The child object gets only parsed and merged if the it has the identifier. The identifier can have an empty object.
 
-## Usage MergeableArray
+## Usage
+
+```
+legibleMergeable.create([dump, options])
+legibleMergeable.merge(a, b[, options])
+has(key)
+get(key[, fallback])
+set(key, value[, options])
+delete(key, value[, options])
+refresh(key[, options])
+modify(fn(item)[, options])
+size()
+base()
+dump()
+meta()
+clone()
+merge(b)
+filter(fn(item, key, date)[, options])
+map(fn(item, key, date)[, options])
+```
+
+## MergeableArray: Ordered List
+
+```json
+[
+  {
+    "id": 1,
+    "title": "Buy Sugar",
+    "done": false,
+    "^m": { "title": "2020-10-23T15:50:02.064Z" }
+  },
+  {
+    "id": 2,
+    "title": "Change Lightbulb",
+    "done": true,
+    "^m": { "done": "2020-10-23T15:50:02.064Z" }
+  },
+  {
+    "^m": {
+      1: "2020-10-21T10:00:00.000Z",
+      2: "2020-10-21T10:00:00.000Z"
+      "^order": "2021-09-10"
+    },
+    "^id": "id",
+    "^order": "2021-09-10",
+  },
+)
+```
 
 All list elements are expected to be a simple JSON object with at least an unique `id`. The objects can have any arbitrary properties and values. The JSON datatypes are allowed: string, number, boolean, arrays and objects.
 
@@ -132,23 +179,6 @@ meta()
 ```javascript
 dump()
 toString()
-```
-
-## Usage MergableObject
-
-```
-legibleMergeable.Object()
-has(key)
-get(key)
-set(key, value[, date])
-delete(key, value[, date])
-id()
-size()
-base()
-dump()
-toString()
-clone()
-merge()
 ```
 
 ## Vue Implementation

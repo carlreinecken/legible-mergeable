@@ -1,32 +1,7 @@
-* [x] recursive objects
-* [x] set with callback, so previous value can be easier modified
-* option to set date when calling create()
-* some hash
-* rename state to iterator?
-* api to modify a whole Mergeable
 * research how to compress modification dates if there are extacly same of multiple properties
-* NICE TO HAVE: api add mergeable item less verbose
+* more options: set date when calling create(), pass mod key into static funktions (is kept in instances)
+* compare mergeables
 * NICE TO HAVE: throw error if the new date in `set()` is before the previous mod date (relative to the wall clock) (but this could be wanted) OR throw error if dates in merging are in the past relative to wall clock (this would make the merge coupled with outside info tho)
-
-## api to modify a whole Mergeable and detect the changes made and set only their modification date
-
-this would need to compare the new item with the old one (computing the state as hash? or using a proxy). but it's probably such a practility boost. a vue formular wouldnt need to reference the Mergeable in the inputs itself but only a simple base() object
-
-```javascript
-list.get(1).transaction(item => {
-  item.done = true
-  // item.title is not modified
-  item.title = item.title
-  
-  // nested transaction should be no problem, this should only set a modification date on item.subtask.0
-  item.subtask.get(0).transaction(sub => {
-    sub.done = true
-  })
-
-  // this should only set a modification date on item.subtask.1
-  item.subtask.delete(1)
-}, date)
-```
 
 ## hash
 
@@ -34,47 +9,64 @@ to compare two states and check whether they diverged
 
 states can be the same but their modification dates can differ. so i need to hash both
 
-i also need to know when a merge didnt change anything
+i also need to know when a merge didnt/wont change anything
 
-## iterator
+* calculate on demand
+* calculate every time sonething changes
 
-when iterating in Vuejs over an object to access its children
-
-just rename state() to iterator()
-
-## add mergeable item
-
-this is way to verbose.. NICE TO HAVE! this is only needed if a dump is added.
+just conpare the latest date
 
 ```
-list.set(44, legibleMergeable.create({ title: ' hi' }))
+doc.hasChangedSince(date)
 
-// too confusing
-list.create(44, { title: 'hi' })
-
-// also to verbose
-list.set(44, { title: 'hi', '^m': {} })
-
-// better
-list.setMergeable(44, { title: 'hi' })
-
-// better
-list.set(44, { title: 'hi' }, { mergeable: true })
+doc.compare(docB)
 ```
 
-## NICE TO HAVE: improve api of accessing on nested mergeables
+use cases
 
-needed? i transactions would make this superflous
+* comparing latest date
+  * prevent merge (and upload)
+  * detect change in formular 
+
+## static merge should handle raw dumps
+
+so far i use a specialized dump { state, '^m' } for the merge. which is kinda stupid, because i only do that, to recognize a mergeable. and because the merge tests dont pass a mergeable instance.
+
+the solution: offer support for instances *and* dumps 💁‍♀️ this would also enable the use of the merge function without ever needing the Mergeable Class
 
 ```
-list.get('devs').get(2).set('name', 'Gustav')
-    
-list.set('devs.2.name', 'Gustav')
+transferObject = { _state: {}, _modifications: {}, __isMergeable: true }
 
-list.set('devs', 2, 'name', 'Gustav')
+dump = { ..., ^m: {} }
 
-list.set(['devs', 2, 'name'], 'Gustav')
+dump <-> transferObject
+
+transferObject is a subset of Mergeable
+
+dump <-> internal
+
+-------
+
+// so far
+dump > instance
+
+// dump > transferObject > instance
+// dump > transferObject > dump
+
+legibleMergeable.merge(instance, dump)
+legibleMergeable.merge(dump, dump)
+
+// returns dump (without needing to convert to an instance)
+forceDump, forceInstance?
+
+TODO: measure perfomance improvement not to create class
+console.time('t') consol
+
 ```
+
+## soft delete
+
+encourage "soft delete" in readme: use some flag to hide the item. the flag should be always refreshed. merging: the flag gets always compared to the latest modification date(?)
 
 ## manual order
 
@@ -86,11 +78,9 @@ list.dumpAsArray() or just dump()
 
 may this even be a case where i should extend Mergeable for smthng like MergeableArray
 
-then i could overwrite all the imprtant functions. include a `_order` property, which is just handled as primitive value and represents the order of the top level as an array of identifiers. reorder() just takes a list of ids in their represantative order and sets the modification date
+then i could overwrite all the imprtant functions. include a `_order` property, which is just handled as primitive value and represents the order of the top level as an array of identifiers. reorder() just takes a list of ids in their represantative order and sets the modification date – which means ordering the list is one action
 
-for merging i would need to inject the order into the state.. thats disgusting oO
-
-```javascript
+```
 arrayToObject (array, customIndex) {
 return array.reduce((acc, value, i) => {
   const key = customIndex == null ? i : customIndex

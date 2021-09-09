@@ -70,9 +70,20 @@ export class Mergeable extends AbstractMergeable {
 
     return this
   }
+  
+  date (key) {
+    retun this._modifications[key]
+  }
 
   size () {
     return Object.keys(this._state).length
+  }
+  
+  latestModification () {
+    return Object.values(this._modifications)
+      .map(date => new Date(date))
+      .sort((a, b) => b - a)
+      ?.[0] || null
   }
 
   /*
@@ -163,12 +174,8 @@ export class Mergeable extends AbstractMergeable {
           value = createProxy(value)
         }
 
-        return [key, callback(value, key, this._modifications[key])]
+        return callback(value, key, this._modifications[key])
       })
-      .reduce((result, [key, value]) => {
-        result[key] = value
-        return result
-      }, {})
   }
 
   /*
