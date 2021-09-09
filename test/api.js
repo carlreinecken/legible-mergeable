@@ -382,6 +382,20 @@ describe('api', function () {
     expect(task.dump()).to.eql(expected)
   })
 
+  describe('compare', function () {
+    // TODO
+    xit('same docs', function () {
+    })
+
+    xit('with a doc that has one changed property', function () {
+    })
+
+    xit('with a doc that has one added property', function () {
+    })
+
+    it('whatsup with nested')
+  })
+
   describe('array like functions', function () {
     it('filter simple state', function () {
       const doc = legibleMergeable.create({ 0: 'Abc', 1: 'df', 2: 'g', 3: '' })
@@ -395,15 +409,18 @@ describe('api', function () {
 
     it('filter nested', function () {
       const doc = legibleMergeable.create()
+
       doc.set(100, { age: 12 }, { mergeable: false })
       doc.set(101, { age: 23 }, { mergeable: true })
-      doc.set(102, { age: 72 }, { mergeable: true })
+
+      const item102 = legibleMergeable.create({ age: 72 })
+      doc.set(102, item102)
 
       const filteredNormal = doc.filter(item => item.age % 3 === 0, { proxy: false })
       const filteredWithProxy = doc.filter(item => item.age % 3 === 0, { proxy: true })
 
       expect(filteredNormal).to.be.eql({ 100: { age: 12 } })
-      expect(filteredWithProxy).to.be.eql({ 100: { age: 12 }, 102: { age: 72 } })
+      expect(filteredWithProxy).to.be.eql({ 100: { age: 12 }, 102: item102 })
     })
 
     it('filter by modification date')
@@ -417,10 +434,10 @@ describe('api', function () {
       })
 
       const mappedNormal = doc.map(item => item.base * item.multiplier, { proxy: false })
-      const mappedWithProxy = doc.map(item => item.base * item.multiplier, { proxy: true })
+      const mappedWithProxy = doc.map(item => item.base * item.multiplier, { proxy: true, toArray: true })
 
       expect(mappedNormal).to.be.eql({ hox: 48, hqm: NaN, owz: NaN, vpt: NaN })
-      expect(mappedWithProxy).to.be.eql({ hox: 48, hqm: 6, owz: -50.4, vpt: 147 })
+      expect(mappedWithProxy).to.be.eql([6, -50.4, 147, 48])
     })
   })
 })

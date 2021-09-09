@@ -137,12 +137,6 @@
         //   })
         // }
 
-        // // eslint-disable-next-line
-        // if (!(key in target._state) && Vue) {
-        //   // eslint-disable-next-line
-        //   Vue.set(target._state, key, null)
-        // }
-
         return item
       },
 
@@ -288,8 +282,31 @@
       return this
     }
 
+    date (key) {
+      return this._modifications[key]
+    }
+
     size () {
       return Object.keys(this._state).length
+    }
+
+    compare (docB) {
+      const modifications = {
+        a: Object.entries(this._modifications),
+        b: Object.entries(docB._modifications)
+      };
+
+      if (modifications.a.length !== modifications.b.length) {
+        return false
+      }
+
+      for (const [key, date] in modifications.a) {
+        if (date !== modifications.b[key]) {
+          return false
+        }
+      }
+
+      return true
     }
 
     /*
@@ -348,44 +365,52 @@
     filter (callback, options) {
       options = options || {};
 
-      let entries = Object.entries(this._state);
+      const result = {};
 
-      if (options.proxy === true) {
-        entries = entries.map(([key, value]) => {
-          if (value instanceof Mergeable) {
-            return [key, createProxy(value)]
-          }
+      for (const key in this._state) {
+        let value = this._state[key];
 
-          return [key, value]
-        });
+        if (options.proxy === true && value instanceof Mergeable) {
+          value = createProxy(value);
+        }
+
+        if (callback(value, key, this._modifications[key])) {
+          result[key] = this._state[key];
+        }
       }
 
-      return entries
-        .filter(([key, value]) => {
-          return callback(value, key, this._modifications[key])
-        })
-        .reduce((result, [key, value]) => {
-          result[key] = value;
-          return result
-        }, {})
+      return result
     }
 
     map (callback, options) {
       options = options || {};
 
-      return Object
-        .entries(this._state)
-        .map(([key, value]) => {
-          if (options.proxy === true && value instanceof Mergeable) {
-            value = createProxy(value);
-          }
+      const toArray = options.toArray === true;
+      const useProxy = options.proxy === true;
+      const result = toArray ? [] : {};
 
-          return [key, callback(value, key, this._modifications[key])]
-        })
-        .reduce((result, [key, value]) => {
-          result[key] = value;
-          return result
-        }, {})
+      for (const key in this._state) {
+        let value = this._state[key];
+
+        if (useProxy && value instanceof Mergeable) {
+          value = createProxy(value);
+        }
+
+        const evaluation = callback(value, key, this._modifications[key]);
+
+        if (useProxy && evaluation instanceof Mergeable) {
+          // Otherwise a proxy would be returned
+          throw new TypeError('You can not return an instance of Mergeable')
+        }
+
+        if (toArray === true) {
+          result.push(evaluation);
+        } else {
+          result[key] = evaluation;
+        }
+      }
+
+      return result
     }
 
     /*
