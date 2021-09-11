@@ -1,12 +1,10 @@
-import { AbstractMergeable } from './AbstractMergeable.class'
-
-export function createProxy (mergeable, options) {
+export function createProxy (mergeable, options, Mergeable) {
   return new Proxy(mergeable, {
     get (target, key) {
       const item = target._state[key]
 
-      if (item instanceof AbstractMergeable) {
-        return createProxy(item, options)
+      if (item instanceof Mergeable) {
+        return createProxy(item, options, Mergeable)
       }
 
       // I'm to be honest not sure if I want/need to support this.

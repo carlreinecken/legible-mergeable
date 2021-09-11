@@ -4,6 +4,8 @@
   (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.legibleMergeable = factory());
 }(this, (function () { 'use strict';
 
+  const MERGEABLE_MARKER = '^lm';
+
   function hasKey (object, key) {
     return Object.prototype.hasOwnProperty.call(object, key)
   }
@@ -25,28 +27,14 @@
     return [...new Set(array)]
   }
 
-  class AbstractMergeable {
-    static get MODIFICATIONS_KEY () {
-      return '^M3Rg34bL3'
-    }
-
-    constructor () {
-      if (this.constructor === AbstractMergeable) {
-        throw new Error('Can\'t instantiate the abstract class AbstractMergeable!')
-      }
-    }
-  }
-
-  const MOD_KEY = AbstractMergeable.MODIFICATIONS_KEY;
-
   function mergeFunction ({ a: docA, b: docB }) {
     function isPropertyMergeable (property) {
-      return isObject(property) && isObject(property[MOD_KEY])
+      return isObject(property) && isObject(property[MERGEABLE_MARKER])
     }
 
     const input = {
-      a: { state: docA.state, mods: docA[MOD_KEY] },
-      b: { state: docB.state, mods: docB[MOD_KEY] }
+      a: { state: docA.state, mods: docA[MERGEABLE_MARKER] },
+      b: { state: docB.state, mods: docB[MERGEABLE_MARKER] }
     };
 
     const result = { state: {}, mods: {} };
@@ -64,9 +52,14 @@
 
       // The property in A is newer
       if (aChangedAt > bChangedAt) {
+        // if: a and b are Mergeables, they should be merged
+        // else if: one property is a Mergeable:
+        //   - if A (later) is the Mergeable, just take that
+        //   - if B (earlier) is the Mergeable, i would need to recursively check
+        //     whether the Mergeable has a later date anywhere in its nested props
         if (hasKey(input.a.state, prop)) {
           result.state[prop] = deepCopy(input.a.state[prop]);
-        }
+        } // else: The property was deleted
 
         result.mods[prop] = input.a.mods[prop];
 
@@ -89,11 +82,11 @@
         result.mods[prop] = input.a.mods[prop];
       }
 
-      // Call the merge function recursively if both properties are mergeables
+      // Call the merge function recursively if both properties are Mergeables
       if (isPropertyMergeable(input.a.state[prop]) && isPropertyMergeable(input.b.state[prop])) {
         result.state[prop] = mergeFunction({
-          a: { state: input.a.state[prop].state, [MOD_KEY]: input.a.state[prop][MOD_KEY] },
-          b: { state: input.b.state[prop].state, [MOD_KEY]: input.b.state[prop][MOD_KEY] }
+          a: { state: input.a.state[prop].state, [MERGEABLE_MARKER]: input.a.state[prop][MERGEABLE_MARKER] },
+          b: { state: input.b.state[prop].state, [MERGEABLE_MARKER]: input.b.state[prop][MERGEABLE_MARKER] }
         });
 
         continue
@@ -105,20 +98,20 @@
       }
     }
 
-    result[MOD_KEY] = result.mods;
+    result[MERGEABLE_MARKER] = result.mods;
 
     delete result.mods;
 
     return result
   }
 
-  function createProxy (mergeable, options) {
+  function createProxy (mergeable, options, Mergeable) {
     return new Proxy(mergeable, {
       get (target, key) {
         const item = target._state[key];
 
-        if (item instanceof AbstractMergeable) {
-          return createProxy(item, options)
+        if (item instanceof Mergeable) {
+          return createProxy(item, options, Mergeable)
         }
 
         // I'm to be honest not sure if I want/need to support this.
@@ -175,13 +168,13 @@
    * Transform a given internal state.
    * If the instance is found it gets transformed via the given callback
    */
-  function transformInternalState (state, transformInstanceFn) {
+  function transformInternalState (state, transformInstanceFn, Mergeable) {
     return Object
       .entries(state)
       .reduce((result, [identifier, property]) => {
         if (typeof property !== 'object') {
           result[identifier] = property;
-        } else if (property instanceof AbstractMergeable) {
+        } else if (property instanceof Mergeable) {
           result[identifier] = transformInstanceFn(property);
         } else {
           result[identifier] = deepCopy(property);
@@ -199,7 +192,7 @@
     return Object
       .entries(dump)
       .reduce((result, [identifier, property]) => {
-        if (isObject(property) && isObject(property[AbstractMergeable.MODIFICATIONS_KEY])) {
+        if (isObject(property) && isObject(property[MERGEABLE_MARKER])) {
           result[identifier] = transformInstanceFn(property);
         } else {
           result[identifier] = property;
@@ -209,17 +202,23 @@
       }, {})
   }
 
-  function mapMergeableToMergeObject (doc) {
+  function mapMergeableToMergeObject (doc, Mergeable) {
     return {
-      state: transformInternalState(doc._state, property => mapMergeableToMergeObject(property)),
-      [AbstractMergeable.MODIFICATIONS_KEY]: doc._modifications
+      state: transformInternalState(
+        doc._state,
+        property => mapMergeableToMergeObject(property, Mergeable),
+        Mergeable
+      ),
+      [MERGEABLE_MARKER]: doc._modifications
     }
   }
 
-  class Mergeable extends AbstractMergeable {
-    constructor (state, modifications) {
-      super();
+  class Mergeable {
+    get __isMergeable () {
+      return true
+    }
 
+    constructor (state, modifications) {
       this._state = transformDump(state, property => Mergeable.createFromDump(property));
       this._modifications = modifications;
     }
@@ -228,9 +227,9 @@
       let modifications = {};
       const state = deepCopy(dump || {});
 
-      if (hasKey(state, Mergeable.MODIFICATIONS_KEY)) {
-        modifications = state[Mergeable.MODIFICATIONS_KEY];
-        delete state[Mergeable.MODIFICATIONS_KEY];
+      if (hasKey(state, MERGEABLE_MARKER)) {
+        modifications = state[MERGEABLE_MARKER];
+        delete state[MERGEABLE_MARKER];
       }
 
       return new Mergeable(state, modifications)
@@ -277,7 +276,7 @@
     modify (callback, options) {
       options = options || {};
 
-      callback(createProxy(this, options));
+      callback(createProxy(this, options, Mergeable));
 
       return this
     }
@@ -320,11 +319,11 @@
      * The state without the modifications, it's the "pure" document
      */
     base () {
-      return transformInternalState(this._state, property => property.base())
+      return transformInternalState(this._state, property => property.base(), Mergeable)
     }
 
     meta () {
-      return { [Mergeable.MODIFICATIONS_KEY]: { ...this._modifications } }
+      return { [MERGEABLE_MARKER]: { ...this._modifications } }
     }
 
     /*
@@ -332,8 +331,8 @@
      */
     dump () {
       return {
-        ...transformInternalState(this._state, property => property.dump()),
-        [Mergeable.MODIFICATIONS_KEY]: this._modifications
+        ...transformInternalState(this._state, property => property.dump(), Mergeable),
+        [MERGEABLE_MARKER]: this._modifications
       }
     }
 
@@ -354,10 +353,10 @@
         throw TypeError('Only instances of Mergeable can be merged')
       }
 
-      const result = mergeFunction({ a: mapMergeableToMergeObject(this), b: mapMergeableToMergeObject(docB) });
+      const result = mergeFunction({ a: mapMergeableToMergeObject(this, Mergeable), b: mapMergeableToMergeObject(docB, Mergeable) });
 
-      this._state = transformDump(result.state, dump => new Mergeable(dump.state, dump[Mergeable.MODIFICATIONS_KEY]));
-      this._modifications = result[Mergeable.MODIFICATIONS_KEY];
+      this._state = transformDump(result.state, dump => new Mergeable(dump.state, dump[MERGEABLE_MARKER]));
+      this._modifications = result[MERGEABLE_MARKER];
 
       return this
     }
@@ -371,7 +370,7 @@
         let value = this._state[key];
 
         if (options.proxy === true && value instanceof Mergeable) {
-          value = createProxy(value);
+          value = createProxy(value, null, Mergeable);
         }
 
         if (callback(value, key, this._modifications[key])) {
@@ -393,7 +392,7 @@
         let value = this._state[key];
 
         if (useProxy && value instanceof Mergeable) {
-          value = createProxy(value);
+          value = createProxy(value, null, Mergeable);
         }
 
         const evaluation = callback(value, key, this._modifications[key]);
@@ -417,7 +416,7 @@
      * Experimental
      */
     get _proxy () {
-      return createProxy(this)
+      return createProxy(this, null, Mergeable)
     }
   }
 
@@ -436,7 +435,9 @@
 
     _mergeFunction: mergeFunction,
 
-    Mergeable: Mergeable
+    Mergeable: Mergeable,
+
+    MERGEABLE_MARKER
   };
 
   return legibleMergeable;

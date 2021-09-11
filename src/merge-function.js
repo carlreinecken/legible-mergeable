@@ -1,16 +1,14 @@
 import * as util from './util'
-import { AbstractMergeable } from './AbstractMergeable.class'
-
-const MOD_KEY = AbstractMergeable.MODIFICATIONS_KEY
+import { MERGEABLE_MARKER as MARKER } from './constants'
 
 export function mergeFunction ({ a: docA, b: docB }) {
   function isPropertyMergeable (property) {
-    return util.isObject(property) && util.isObject(property[MOD_KEY])
+    return util.isObject(property) && util.isObject(property[MARKER])
   }
 
   const input = {
-    a: { state: docA.state, mods: docA[MOD_KEY] },
-    b: { state: docB.state, mods: docB[MOD_KEY] }
+    a: { state: docA.state, mods: docA[MARKER] },
+    b: { state: docB.state, mods: docB[MARKER] }
   }
 
   const result = { state: {}, mods: {} }
@@ -36,7 +34,7 @@ export function mergeFunction ({ a: docA, b: docB }) {
       if (util.hasKey(input.a.state, prop)) {
         result.state[prop] = util.deepCopy(input.a.state[prop])
       } // else: The property was deleted
-      
+
       result.mods[prop] = input.a.mods[prop]
 
       continue
@@ -61,8 +59,8 @@ export function mergeFunction ({ a: docA, b: docB }) {
     // Call the merge function recursively if both properties are Mergeables
     if (isPropertyMergeable(input.a.state[prop]) && isPropertyMergeable(input.b.state[prop])) {
       result.state[prop] = mergeFunction({
-        a: { state: input.a.state[prop].state, [MOD_KEY]: input.a.state[prop][MOD_KEY] },
-        b: { state: input.b.state[prop].state, [MOD_KEY]: input.b.state[prop][MOD_KEY] }
+        a: { state: input.a.state[prop].state, [MARKER]: input.a.state[prop][MARKER] },
+        b: { state: input.b.state[prop].state, [MARKER]: input.b.state[prop][MARKER] }
       })
 
       continue
@@ -74,7 +72,7 @@ export function mergeFunction ({ a: docA, b: docB }) {
     }
   }
 
-  result[MOD_KEY] = result.mods
+  result[MARKER] = result.mods
 
   delete result.mods
 

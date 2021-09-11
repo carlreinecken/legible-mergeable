@@ -1,3 +1,4 @@
+import { MERGEABLE_MARKER } from './constants'
 import { mergeFunction } from './merge-function'
 import { Mergeable } from './Mergeable.class'
 
@@ -16,5 +17,7 @@ export default {
 
   _mergeFunction: mergeFunction,
 
-  Mergeable: Mergeable
+  Mergeable: Mergeable,
+
+  MERGEABLE_MARKER
 }

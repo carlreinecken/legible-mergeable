@@ -1,14 +1,16 @@
 import * as util from './util'
+import { MERGEABLE_MARKER } from './constants'
 import { mergeFunction } from './merge-function'
-import { AbstractMergeable } from './AbstractMergeable.class'
 import { createProxy } from './proxy'
 import { transformDump, transformInternalState } from './transformers'
 import { mapMergeableToMergeObject } from './merge-mapping'
 
-export class Mergeable extends AbstractMergeable {
-  constructor (state, modifications) {
-    super()
+export class Mergeable {
+  get __isMergeable () {
+    return true
+  }
 
+  constructor (state, modifications) {
     this._state = transformDump(state, property => Mergeable.createFromDump(property))
     this._modifications = modifications
   }
@@ -17,9 +19,9 @@ export class Mergeable extends AbstractMergeable {
     let modifications = {}
     const state = util.deepCopy(dump || {})
 
-    if (util.hasKey(state, Mergeable.MODIFICATIONS_KEY)) {
-      modifications = state[Mergeable.MODIFICATIONS_KEY]
-      delete state[Mergeable.MODIFICATIONS_KEY]
+    if (util.hasKey(state, MERGEABLE_MARKER)) {
+      modifications = state[MERGEABLE_MARKER]
+      delete state[MERGEABLE_MARKER]
     }
 
     return new Mergeable(state, modifications)
@@ -66,7 +68,7 @@ export class Mergeable extends AbstractMergeable {
   modify (callback, options) {
     options = options || {}
 
-    callback(createProxy(this, options))
+    callback(createProxy(this, options, Mergeable))
 
     return this
   }
@@ -109,11 +111,11 @@ export class Mergeable extends AbstractMergeable {
    * The state without the modifications, it's the "pure" document
    */
   base () {
-    return transformInternalState(this._state, property => property.base())
+    return transformInternalState(this._state, property => property.base(), Mergeable)
   }
 
   meta () {
-    return { [Mergeable.MODIFICATIONS_KEY]: { ...this._modifications } }
+    return { [MERGEABLE_MARKER]: { ...this._modifications } }
   }
 
   /*
@@ -121,8 +123,8 @@ export class Mergeable extends AbstractMergeable {
    */
   dump () {
     return {
-      ...transformInternalState(this._state, property => property.dump()),
-      [Mergeable.MODIFICATIONS_KEY]: this._modifications
+      ...transformInternalState(this._state, property => property.dump(), Mergeable),
+      [MERGEABLE_MARKER]: this._modifications
     }
   }
 
@@ -143,10 +145,10 @@ export class Mergeable extends AbstractMergeable {
       throw TypeError('Only instances of Mergeable can be merged')
     }
 
-    const result = mergeFunction({ a: mapMergeableToMergeObject(this), b: mapMergeableToMergeObject(docB) })
+    const result = mergeFunction({ a: mapMergeableToMergeObject(this, Mergeable), b: mapMergeableToMergeObject(docB, Mergeable) })
 
-    this._state = transformDump(result.state, dump => new Mergeable(dump.state, dump[Mergeable.MODIFICATIONS_KEY]))
-    this._modifications = result[Mergeable.MODIFICATIONS_KEY]
+    this._state = transformDump(result.state, dump => new Mergeable(dump.state, dump[MERGEABLE_MARKER]))
+    this._modifications = result[MERGEABLE_MARKER]
 
     return this
   }
@@ -160,7 +162,7 @@ export class Mergeable extends AbstractMergeable {
       let value = this._state[key]
 
       if (options.proxy === true && value instanceof Mergeable) {
-        value = createProxy(value)
+        value = createProxy(value, null, Mergeable)
       }
 
       if (callback(value, key, this._modifications[key])) {
@@ -182,7 +184,7 @@ export class Mergeable extends AbstractMergeable {
       let value = this._state[key]
 
       if (useProxy && value instanceof Mergeable) {
-        value = createProxy(value)
+        value = createProxy(value, null, Mergeable)
       }
 
       const evaluation = callback(value, key, this._modifications[key])
@@ -206,6 +208,6 @@ export class Mergeable extends AbstractMergeable {
    * Experimental
    */
   get _proxy () {
-    return createProxy(this)
+    return createProxy(this, null, Mergeable)
   }
 }

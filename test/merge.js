@@ -2,7 +2,7 @@ const expect = require('chai').expect
 
 const legibleMergeable = require('../dist/legible-mergeable.js')
 const mergeFunction = legibleMergeable._mergeFunction
-const MODS_KEY = legibleMergeable.Mergeable.MODIFICATIONS_KEY
+const MODS_KEY = legibleMergeable.MERGEABLE_MARKER
 
 /* eslint-disable no-unused-expressions */
 

@@ -1,17 +1,17 @@
 import * as util from './util'
-import { AbstractMergeable } from './AbstractMergeable.class'
+import { MERGEABLE_MARKER } from './constants'
 
 /**
  * Transform a given internal state.
  * If the instance is found it gets transformed via the given callback
  */
-export function transformInternalState (state, transformInstanceFn) {
+export function transformInternalState (state, transformInstanceFn, Mergeable) {
   return Object
     .entries(state)
     .reduce((result, [identifier, property]) => {
       if (typeof property !== 'object') {
         result[identifier] = property
-      } else if (property instanceof AbstractMergeable) {
+      } else if (property instanceof Mergeable) {
         result[identifier] = transformInstanceFn(property)
       } else {
         result[identifier] = util.deepCopy(property)
@@ -29,7 +29,7 @@ export function transformDump (dump, transformInstanceFn) {
   return Object
     .entries(dump)
     .reduce((result, [identifier, property]) => {
-      if (util.isObject(property) && util.isObject(property[AbstractMergeable.MODIFICATIONS_KEY])) {
+      if (util.isObject(property) && util.isObject(property[MERGEABLE_MARKER])) {
         result[identifier] = transformInstanceFn(property)
       } else {
         result[identifier] = property

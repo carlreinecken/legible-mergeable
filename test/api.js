@@ -2,8 +2,7 @@ const expect = require('chai').expect
 
 const legibleMergeable = require('../dist/legible-mergeable.js')
 const Mergeable = legibleMergeable.Mergeable
-const MODIFICATIONS_KEY = Mergeable.MODIFICATIONS_KEY
-const MOD_KEY = MODIFICATIONS_KEY
+const MARKER = legibleMergeable.MERGEABLE_MARKER
 
 const newDate = date => (new Date(date)).toISOString()
 
@@ -15,7 +14,7 @@ describe('api', function () {
       const item = legibleMergeable.create()
 
       expect(item.base()).to.eql({})
-      expect(item.dump()).to.eql({ [MODIFICATIONS_KEY]: {} })
+      expect(item.dump()).to.eql({ [MARKER]: {} })
     })
 
     it('a mergeable object', function () {
@@ -29,7 +28,7 @@ describe('api', function () {
 
       expect(item.base()).to.eql(base)
 
-      base[MODIFICATIONS_KEY] = {}
+      base[MARKER] = {}
       expect(item.dump()).to.eql(base)
     })
 
@@ -38,7 +37,7 @@ describe('api', function () {
         id: 1,
         name: 'Oatmilk',
         price: 140,
-        [MODIFICATIONS_KEY]: {
+        [MARKER]: {
           price: newDate('2020-08-26')
         }
       }
@@ -46,7 +45,7 @@ describe('api', function () {
       const item = legibleMergeable.create(original)
       expect(item.dump()).to.eql(original)
 
-      delete original[MODIFICATIONS_KEY]
+      delete original[MARKER]
       expect(item.base()).to.eql(original)
     })
   })
@@ -64,8 +63,8 @@ describe('api', function () {
       item.set('isOpen', false, { date })
 
       const dump = item.dump()
-      const changes = dump[MODIFICATIONS_KEY]
-      delete dump[MODIFICATIONS_KEY]
+      const changes = dump[MARKER]
+      delete dump[MARKER]
 
       const expected = {
         id: 1,
@@ -93,8 +92,8 @@ describe('api', function () {
       delete item._proxy.name
 
       const dump = item.dump()
-      const changes = dump[MODIFICATIONS_KEY]
-      delete dump[MODIFICATIONS_KEY]
+      const changes = dump[MARKER]
+      delete dump[MARKER]
 
       const expected = {
         id: 7,
@@ -119,7 +118,7 @@ describe('api', function () {
         name: 'Oatmilk',
         price: 240,
         isOpen: true,
-        [MODIFICATIONS_KEY]: {
+        [MARKER]: {
           name: newDate('2020-08-03'),
           isOpen: newDate('2020-08-05'),
           price: newDate('2020-09-01')
@@ -136,8 +135,8 @@ describe('api', function () {
       }
 
       const dump = item.dump()
-      const changes = dump[MODIFICATIONS_KEY]
-      delete dump[MODIFICATIONS_KEY]
+      const changes = dump[MARKER]
+      delete dump[MARKER]
 
       const expected = {
         id: 1,
@@ -162,7 +161,7 @@ describe('api', function () {
         price: 120,
         isCold: true,
         isOpen: false,
-        [MODIFICATIONS_KEY]: {
+        [MARKER]: {
           name: '2020-08-03',
           isCold: '2020-08-05'
         }
@@ -178,8 +177,8 @@ describe('api', function () {
       const replicaC2 = replicaB.merge(replicaA)
 
       const dump = replicaC1.dump()
-      const changes = dump[MODIFICATIONS_KEY]
-      delete dump[MODIFICATIONS_KEY]
+      const changes = dump[MARKER]
+      delete dump[MARKER]
 
       const expected = {
         name: 'Almondmilk',
@@ -200,15 +199,15 @@ describe('api', function () {
 
   describe('recursive', function () {
     const getSample = () => ({
-      7: { uid: 7, name: 'gustav', [MODIFICATIONS_KEY]: {} },
+      7: { uid: 7, name: 'gustav', [MARKER]: {} },
       foo: {
         uid: 'foo',
         age: 8,
         nested: {
           list: [1, 2, 4, 8, 16, 32, 64],
-          [MODIFICATIONS_KEY]: { list: newDate('2020-08-05') }
+          [MARKER]: { list: newDate('2020-08-05') }
         },
-        [MODIFICATIONS_KEY]: {}
+        [MARKER]: {}
       },
       noMergeable: { uid: 'bar', age: 21 }
     })
@@ -252,7 +251,7 @@ describe('api', function () {
       const item = legibleMergeable.create(raw)
 
       const expectedDump = raw
-      expectedDump[MODIFICATIONS_KEY] = {}
+      expectedDump[MARKER] = {}
 
       expect(item.dump()).to.eql(expectedDump).but.to.not.equal(expectedDump)
     })
@@ -267,19 +266,19 @@ describe('api', function () {
     it('merge', function () {
       const replicaOriginal = legibleMergeable.create({
         1: {
-          name: 'Thriller', price: 9.99, authors: ['Peter'], [MOD_KEY]: { name: '2021-08-03', price: '2021-08-01' }
+          name: 'Thriller', price: 9.99, authors: ['Peter'], [MARKER]: { name: '2021-08-03', price: '2021-08-01' }
         },
 
         2: {
-          name: 'Novel', price: 5.99, authors: ['Fridolin', 'Gustav'], [MOD_KEY]: { name: '2021-08-03', price: '2021-08-01' }
+          name: 'Novel', price: 5.99, authors: ['Fridolin', 'Gustav'], [MARKER]: { name: '2021-08-03', price: '2021-08-01' }
         },
 
         3: {
-          name: 'Crime', price: 7.0, authors: ['Donald'], [MOD_KEY]: { name: '2021-07-07', price: '2021-07-14' }
+          name: 'Crime', price: 7.0, authors: ['Donald'], [MARKER]: { name: '2021-07-07', price: '2021-07-14' }
         },
 
         noMergePlease: { name: 'Not mergeable' },
-        [MOD_KEY]: { 1: '2021-08-01' }
+        [MARKER]: { 1: '2021-08-01' }
       })
 
       const replicaClone = replicaOriginal.clone()
@@ -299,15 +298,15 @@ describe('api', function () {
 
       const expected = {
         1: {
-          name: 'Scifi', price: 9.99, authors: ['Peter'], [MOD_KEY]: { name: '2021-08-10', price: '2021-08-01' }
+          name: 'Scifi', price: 9.99, authors: ['Peter'], [MARKER]: { name: '2021-08-10', price: '2021-08-01' }
         },
 
         3: {
-          price: 6.3, authors: ['Donald', 'Daisy'], [MOD_KEY]: { name: '2021-08-10', price: '2021-08-10', authors: '2021-08-10' }
+          price: 6.3, authors: ['Donald', 'Daisy'], [MARKER]: { name: '2021-08-10', price: '2021-08-10', authors: '2021-08-10' }
         },
 
         noMergePlease: { name: 'Not mergeable' },
-        [MOD_KEY]: { 1: '2021-08-01', 2: date }
+        [MARKER]: { 1: '2021-08-01', 2: date }
       }
 
       expect(replicaResultStatic).to.eql(replicaResult)
@@ -371,12 +370,12 @@ describe('api', function () {
       daysUntilWeekend: [],
       foo: {},
       subtasks: {
-        1: { title: 'Shower!', done: true, [MOD_KEY]: { title: '2021-09-07', done: '2021-09-07' } },
-        4: { title: 'Code', done: true, [MOD_KEY]: { done: '2021-09-07' } },
+        1: { title: 'Shower!', done: true, [MARKER]: { title: '2021-09-07', done: '2021-09-07' } },
+        4: { title: 'Code', done: true, [MARKER]: { done: '2021-09-07' } },
         eat: { title: 'Eat', done: true, ingredients: ['Pasta', 'Tofu'] },
-        [MOD_KEY]: { 3: '2021-09-07', 4: '2021-09-07' }
+        [MARKER]: { 3: '2021-09-07', 4: '2021-09-07' }
       },
-      [MOD_KEY]: { done: '2021-09-07', foo: '2021-09-07' }
+      [MARKER]: { done: '2021-09-07', foo: '2021-09-07' }
     }
 
     expect(task.dump()).to.eql(expected)
@@ -427,9 +426,9 @@ describe('api', function () {
 
     it('map nested', function () {
       const doc = legibleMergeable.create({
-        hqm: { base: 2, multiplier: 3, [MOD_KEY]: {} },
-        owz: { base: -56, multiplier: 0.9, [MOD_KEY]: {} },
-        vpt: { base: 7, multiplier: 21, [MOD_KEY]: {} },
+        hqm: { base: 2, multiplier: 3, [MARKER]: {} },
+        owz: { base: -56, multiplier: 0.9, [MARKER]: {} },
+        vpt: { base: 7, multiplier: 21, [MARKER]: {} },
         hox: { base: 24, multiplier: 2 }
       })
 
