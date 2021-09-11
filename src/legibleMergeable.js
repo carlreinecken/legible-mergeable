@@ -1,10 +1,15 @@
 import { MERGEABLE_MARKER } from './constants'
 import { mergeFunction } from './merge-function'
 import { Mergeable } from './Mergeable.class'
+import * as converter from './converter'
 
 export default {
   create (dump) {
-    return Mergeable.createFromDump(dump)
+    return converter.fromDump(dump, property => {
+      const r = new Mergeable(property)
+      // console.log('lM/create/trFn', r instanceof Mergeable, r)
+      return r
+    })
   },
 
   merge (docA, docB) {
@@ -15,9 +20,11 @@ export default {
     return docA.clone().merge(docB)
   },
 
-  _mergeFunction: mergeFunction,
-
   Mergeable: Mergeable,
 
-  MERGEABLE_MARKER
+  MERGEABLE_MARKER,
+
+  _mergeFunction: mergeFunction,
+
+  _converter: converter
 }

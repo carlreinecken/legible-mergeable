@@ -27,82 +27,206 @@
     return [...new Set(array)]
   }
 
-  function mergeFunction ({ a: docA, b: docB }) {
-    function isPropertyMergeable (property) {
-      return isObject(property) && isObject(property[MERGEABLE_MARKER])
+  /*
+   *               |------------|
+   *               |            |
+   *               |  Mergeable |
+   *               |            |
+   *               |      ^     |
+   *               |-- ~  | ~ --|
+   *               |      v     |
+   *       <----   |            |  <----
+   * Dump          |  Transfer  |         Merge Function
+   *       ---->   |            |  ---->
+   *               |------------|
+  */
+
+  function switchCaseProperties (property, transformCondition, transformFunction) {
+    if (typeof property !== 'object') {
+      console.log('switchCaseProperties/noObject', typeof property, property);
+      return property
     }
 
-    const input = {
-      a: { state: docA.state, mods: docA[MERGEABLE_MARKER] },
-      b: { state: docB.state, mods: docB[MERGEABLE_MARKER] }
-    };
+    if (transformCondition(property)) {
+      console.log('switchCaseProperties/trCnd', property);
+      return transformFunction(property)
+    }
 
-    const result = { state: {}, mods: {} };
+    if (property.__isMergeable === true) {
+      console.log('switchCaseProperties/__isMergeable', property);
+      return createTransferObject(property._state, property._modifications)
+    }
+
+    console.log('switchCaseProperties/deepCopy', property);
+    return deepCopy(property)
+  }
+
+  function createTransferObject (state, modifications) {
+    return {
+      _state: { ...state },
+      _modifications: { ...modifications } || {},
+      __isMergeable: true
+    }
+  }
+
+  function fromDump (dump, transformFunction) {
+    transformFunction = transformFunction || (property => property);
+    const transformCondition = (property) => isObject(property) && isObject(property[MERGEABLE_MARKER]);
+
+    console.log('fromDump/beforeLoop', dump);
+
+    const state = {};
+    let modifications;
+
+    for (const key in dump) {
+      if (!hasKey(dump, key)) {
+        continue
+      }
+
+      if (key === MERGEABLE_MARKER) {
+        modifications = dump[MERGEABLE_MARKER];
+        continue
+      }
+
+      state[key] = switchCaseProperties(
+        dump[key],
+        transformCondition,
+        (property) => fromDump(property, transformFunction)
+      );
+    }
+
+    console.log('fromDump/afterLoop', state);
+
+    return transformFunction(createTransferObject(state, modifications))
+  }
+
+  /*
+   * Convert from Transfer to e.g. Mergeable, Dump or Base
+   */
+  function fromTransfer (transfer, transformFunction) {
+    const transformCondition = (property) => property.__isMergeable === true;
+    const state = {};
+
+    // console.log('fromTransfer')
+
+    for (const key in transfer._state) {
+      if (!hasKey(transfer._state, key)) {
+        continue
+      }
+
+      // TODO: is this even necessary?!
+      // if (!transformCondition(transfer._state[key])) {
+      //   state[key] = transfer._state[key]
+      //   continue
+      // }
+
+      state[key] = switchCaseProperties(
+        transfer._state[key],
+        transformCondition,
+        (property) => fromTransfer(property, transformFunction)
+      );
+    }
+
+    return transformFunction(createTransferObject(state, transfer._modifications))
+  }
+
+  function toDump (transfer) {
+    return fromTransfer(transfer, (property) => {
+      return { ...property._state, [MERGEABLE_MARKER]: property._modifications }
+    })
+  }
+
+  function toBase (transfer) {
+    return { ...fromTransfer(transfer, (property) => property._state) }
+  }
+
+  var converter = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    createTransferObject: createTransferObject,
+    fromDump: fromDump,
+    fromTransfer: fromTransfer,
+    toDump: toDump,
+    toBase: toBase
+  });
+
+  function isMergeable (property) {
+    return isObject(property) && property.__isMergeable === true
+  }
+
+  function mergeFunction (input) {
+    const modifications = {};
+    const state = {};
 
     const properties = uniquenizeArray([].concat(
-      Object.keys(input.a.state),
-      Object.keys(input.a.mods),
-      Object.keys(input.b.state),
-      Object.keys(input.b.mods)
+      Object.keys(input.a._state),
+      Object.keys(input.a._modifications),
+      Object.keys(input.b._state),
+      Object.keys(input.b._modifications)
     ));
 
     for (const prop of properties) {
-      const aChangedAt = input.a.mods[prop] ? new Date(input.a.mods[prop]) : null;
-      const bChangedAt = input.b.mods[prop] ? new Date(input.b.mods[prop]) : null;
+      const aChangedAt = input.a._modifications[prop] ? new Date(input.a._modifications[prop]) : null;
+      const bChangedAt = input.b._modifications[prop] ? new Date(input.b._modifications[prop]) : null;
 
       // The property in A is newer
       if (aChangedAt > bChangedAt) {
-        // if: a and b are Mergeables, they should be merged
-        // else if: one property is a Mergeable:
-        //   - if A (later) is the Mergeable, just take that
-        //   - if B (earlier) is the Mergeable, i would need to recursively check
-        //     whether the Mergeable has a later date anywhere in its nested props
-        if (hasKey(input.a.state, prop)) {
-          result.state[prop] = deepCopy(input.a.state[prop]);
+        if (hasKey(input.a._state, prop)) {
+          if (typeof input.a._state[prop] !== 'object') {
+            state[prop] = input.a._state[prop];
+          } else if (input.a._state[prop].__isMergeable === true) {
+            // TODO: mergeable should be cloned
+            // state[prop] = input.a._state[prop]
+            state[prop] = fromTransfer(input.a._state[prop], property => property);
+          } else {
+            state[prop] = deepCopy(input.a._state[prop]);
+          }
         } // else: The property was deleted
 
-        result.mods[prop] = input.a.mods[prop];
+        modifications[prop] = input.a._modifications[prop];
 
         continue
       }
 
       // The property in B is newer
       if (aChangedAt < bChangedAt) {
-        if (hasKey(input.b.state, prop)) {
-          result.state[prop] = deepCopy(input.b.state[prop]);
+        if (hasKey(input.b._state, prop)) {
+          if (typeof input.b._state[prop] !== 'object') {
+            state[prop] = input.b._state[prop];
+          } else if (input.b._state[prop].__isMergeable === true) {
+            // state[prop] = input.b._state[prop]
+            state[prop] = fromTransfer(input.b._state[prop], property => property);
+          } else {
+            state[prop] = deepCopy(input.b._state[prop]);
+          }
         }
 
-        result.mods[prop] = input.b.mods[prop];
+        modifications[prop] = input.b._modifications[prop];
 
         continue
       }
 
       // The modification date is on both sides the same
-      if (hasKey(input.a.mods, prop)) {
-        result.mods[prop] = input.a.mods[prop];
+      if (hasKey(input.a._modifications, prop)) {
+        modifications[prop] = input.a._modifications[prop];
       }
 
       // Call the merge function recursively if both properties are Mergeables
-      if (isPropertyMergeable(input.a.state[prop]) && isPropertyMergeable(input.b.state[prop])) {
-        result.state[prop] = mergeFunction({
-          a: { state: input.a.state[prop].state, [MERGEABLE_MARKER]: input.a.state[prop][MERGEABLE_MARKER] },
-          b: { state: input.b.state[prop].state, [MERGEABLE_MARKER]: input.b.state[prop][MERGEABLE_MARKER] }
+      if (isMergeable(input.a._state[prop]) && isMergeable(input.b._state[prop])) {
+        state[prop] = mergeFunction({
+          a: input.a._state[prop],
+          b: input.b._state[prop]
         });
 
         continue
       }
 
       // The property is on both sides the same
-      if (hasKey(input.a.state, prop)) {
-        result.state[prop] = deepCopy(input.a.state[prop]);
+      if (hasKey(input.a._state, prop)) {
+        state[prop] = deepCopy(input.a._state[prop]);
       }
     }
 
-    result[MERGEABLE_MARKER] = result.mods;
-
-    delete result.mods;
-
-    return result
+    return createTransferObject(state, modifications)
   }
 
   function createProxy (mergeable, options, Mergeable) {
@@ -164,75 +288,14 @@
     })
   }
 
-  /**
-   * Transform a given internal state.
-   * If the instance is found it gets transformed via the given callback
-   */
-  function transformInternalState (state, transformInstanceFn, Mergeable) {
-    return Object
-      .entries(state)
-      .reduce((result, [identifier, property]) => {
-        if (typeof property !== 'object') {
-          result[identifier] = property;
-        } else if (property instanceof Mergeable) {
-          result[identifier] = transformInstanceFn(property);
-        } else {
-          result[identifier] = deepCopy(property);
-        }
-
-        return result
-      }, {})
-  }
-
-  /**
-   * Transform a given dumped (raw) object.
-   * If the instance is found it gets transformed via the given callback
-   */
-  function transformDump (dump, transformInstanceFn) {
-    return Object
-      .entries(dump)
-      .reduce((result, [identifier, property]) => {
-        if (isObject(property) && isObject(property[MERGEABLE_MARKER])) {
-          result[identifier] = transformInstanceFn(property);
-        } else {
-          result[identifier] = property;
-        }
-
-        return result
-      }, {})
-  }
-
-  function mapMergeableToMergeObject (doc, Mergeable) {
-    return {
-      state: transformInternalState(
-        doc._state,
-        property => mapMergeableToMergeObject(property, Mergeable),
-        Mergeable
-      ),
-      [MERGEABLE_MARKER]: doc._modifications
-    }
-  }
-
   class Mergeable {
     get __isMergeable () {
       return true
     }
 
-    constructor (state, modifications) {
-      this._state = transformDump(state, property => Mergeable.createFromDump(property));
-      this._modifications = modifications;
-    }
-
-    static createFromDump (dump) {
-      let modifications = {};
-      const state = deepCopy(dump || {});
-
-      if (hasKey(state, MERGEABLE_MARKER)) {
-        modifications = state[MERGEABLE_MARKER];
-        delete state[MERGEABLE_MARKER];
-      }
-
-      return new Mergeable(state, modifications)
+    constructor ({ _state, _modifications }) {
+      this._state = _state;
+      this._modifications = _modifications;
     }
 
     has (key) {
@@ -256,8 +319,8 @@
     set (key, value, options) {
       options = options || {};
 
-      if (options.mergeable) {
-        value = Mergeable.createFromDump(value);
+      if (options.mergeable || hasKey(value, MERGEABLE_MARKER)) {
+        value = fromDump(value, property => new Mergeable(property));
       }
 
       this._state[key] = value;
@@ -319,10 +382,11 @@
      * The state without the modifications, it's the "pure" document
      */
     base () {
-      return transformInternalState(this._state, property => property.base(), Mergeable)
+      return toBase(this)
     }
 
     meta () {
+      // TODO: remove the marker out of this method
       return { [MERGEABLE_MARKER]: { ...this._modifications } }
     }
 
@@ -330,10 +394,7 @@
      * Dumps the object as native simple object
      */
     dump () {
-      return {
-        ...transformInternalState(this._state, property => property.dump(), Mergeable),
-        [MERGEABLE_MARKER]: this._modifications
-      }
+      return toDump(this)
     }
 
     toString () {
@@ -345,7 +406,7 @@
     }
 
     clone () {
-      return new Mergeable(deepCopy(this._state), { ...this._modifications })
+      return fromTransfer(this, (property) => new Mergeable(property))
     }
 
     merge (docB) {
@@ -353,10 +414,15 @@
         throw TypeError('Only instances of Mergeable can be merged')
       }
 
-      const result = mergeFunction({ a: mapMergeableToMergeObject(this, Mergeable), b: mapMergeableToMergeObject(docB, Mergeable) });
+      const result = mergeFunction({ a: this, b: docB });
+      const { _state, _modifications } = fromTransfer(result, (property) => {
+          // console.log('MC/merge/trFn', property)
+          return new Mergeable(property)
+        });
 
-      this._state = transformDump(result.state, dump => new Mergeable(dump.state, dump[MERGEABLE_MARKER]));
-      this._modifications = result[MERGEABLE_MARKER];
+      this._state = _state;
+      // console.log(this._state, _state)
+      this._modifications = _modifications;
 
       return this
     }
@@ -422,7 +488,11 @@
 
   var legibleMergeable = {
     create (dump) {
-      return Mergeable.createFromDump(dump)
+      return fromDump(dump, property => {
+        const r = new Mergeable(property);
+        // console.log('lM/create/trFn', r instanceof Mergeable, r)
+        return r
+      })
     },
 
     merge (docA, docB) {
@@ -433,11 +503,13 @@
       return docA.clone().merge(docB)
     },
 
-    _mergeFunction: mergeFunction,
-
     Mergeable: Mergeable,
 
-    MERGEABLE_MARKER
+    MERGEABLE_MARKER,
+
+    _mergeFunction: mergeFunction,
+
+    _converter: converter
   };
 
   return legibleMergeable;

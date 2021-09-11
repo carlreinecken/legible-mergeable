@@ -2,29 +2,16 @@ import * as util from './util'
 import { MERGEABLE_MARKER } from './constants'
 import { mergeFunction } from './merge-function'
 import { createProxy } from './proxy'
-import { transformDump, transformInternalState } from './transformers'
-import { mapMergeableToMergeObject } from './merge-mapping'
+import * as converter from './converter'
 
 export class Mergeable {
   get __isMergeable () {
     return true
   }
 
-  constructor (state, modifications) {
-    this._state = transformDump(state, property => Mergeable.createFromDump(property))
-    this._modifications = modifications
-  }
-
-  static createFromDump (dump) {
-    let modifications = {}
-    const state = util.deepCopy(dump || {})
-
-    if (util.hasKey(state, MERGEABLE_MARKER)) {
-      modifications = state[MERGEABLE_MARKER]
-      delete state[MERGEABLE_MARKER]
-    }
-
-    return new Mergeable(state, modifications)
+  constructor ({ _state, _modifications }) {
+    this._state = _state
+    this._modifications = _modifications
   }
 
   has (key) {
@@ -48,8 +35,8 @@ export class Mergeable {
   set (key, value, options) {
     options = options || {}
 
-    if (options.mergeable) {
-      value = Mergeable.createFromDump(value)
+    if (options.mergeable || util.hasKey(value, MERGEABLE_MARKER)) {
+      value = converter.fromDump(value, property => new Mergeable(property))
     }
 
     this._state[key] = value
@@ -111,10 +98,11 @@ export class Mergeable {
    * The state without the modifications, it's the "pure" document
    */
   base () {
-    return transformInternalState(this._state, property => property.base(), Mergeable)
+    return converter.toBase(this)
   }
 
   meta () {
+    // TODO: remove the marker out of this method
     return { [MERGEABLE_MARKER]: { ...this._modifications } }
   }
 
@@ -122,10 +110,7 @@ export class Mergeable {
    * Dumps the object as native simple object
    */
   dump () {
-    return {
-      ...transformInternalState(this._state, property => property.dump(), Mergeable),
-      [MERGEABLE_MARKER]: this._modifications
-    }
+    return converter.toDump(this)
   }
 
   toString () {
@@ -137,7 +122,7 @@ export class Mergeable {
   }
 
   clone () {
-    return new Mergeable(util.deepCopy(this._state), { ...this._modifications })
+    return converter.fromTransfer(this, (property) => new Mergeable(property))
   }
 
   merge (docB) {
@@ -145,10 +130,16 @@ export class Mergeable {
       throw TypeError('Only instances of Mergeable can be merged')
     }
 
-    const result = mergeFunction({ a: mapMergeableToMergeObject(this, Mergeable), b: mapMergeableToMergeObject(docB, Mergeable) })
+    const result = mergeFunction({ a: this, b: docB })
+    const { _state, _modifications } = converter
+      .fromTransfer(result, (property) => {
+        // console.log('MC/merge/trFn', property)
+        return new Mergeable(property)
+      })
 
-    this._state = transformDump(result.state, dump => new Mergeable(dump.state, dump[MERGEABLE_MARKER]))
-    this._modifications = result[MERGEABLE_MARKER]
+    this._state = _state
+    // console.log(this._state, _state)
+    this._modifications = _modifications
 
     return this
   }

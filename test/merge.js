@@ -2,7 +2,7 @@ const expect = require('chai').expect
 
 const legibleMergeable = require('../dist/legible-mergeable.js')
 const mergeFunction = legibleMergeable._mergeFunction
-const MODS_KEY = legibleMergeable.MERGEABLE_MARKER
+const __isMergeable = true
 
 /* eslint-disable no-unused-expressions */
 
@@ -13,33 +13,36 @@ function merge (a, b) {
 describe('merge objects', function () {
   it('two with changed properties', function () {
     const docA = {
-      state: {
+      _state: {
         name: 'gustav',
         age: 22,
         hungry: false,
         pet: 'pig'
       },
-      [MODS_KEY]: { hungry: '2020-07-14', pet: '2020-09-01' }
+      _modifications: { hungry: '2020-07-14', pet: '2020-09-01' },
+      __isMergeable
     }
 
     const docB = {
-      state: {
+      _state: {
         name: 'gustav',
         age: 44,
         hungry: null,
         pet: 'dog'
       },
-      [MODS_KEY]: { age: '2020-07-02', hungry: '2020-07-02', pet: '2020-08-31' }
+      _modifications: { age: '2020-07-02', hungry: '2020-07-02', pet: '2020-08-31' },
+      __isMergeable
     }
 
     const expected = {
-      state: {
+      _state: {
         name: 'gustav',
         age: 44,
         hungry: false,
         pet: 'pig'
       },
-      [MODS_KEY]: { hungry: '2020-07-14', pet: '2020-09-01', age: '2020-07-02' }
+      _modifications: { hungry: '2020-07-14', pet: '2020-09-01', age: '2020-07-02' },
+      __isMergeable
     }
 
     expect(merge(docA, docB)).to.eql(expected)
@@ -49,23 +52,25 @@ describe('merge objects', function () {
   })
 
   it('two with new and deleted properties', function () {
-    const docA = { state: { age: 13 }, [MODS_KEY]: { pet: '2020-09-01' } }
+    const docA = { _state: { age: 13 }, _modifications: { pet: '2020-09-01' }, __isMergeable }
 
     const docB = {
-      state: {
+      _state: {
         name: 'gustav',
         age: 13,
         pet: 'dog'
       },
-      [MODS_KEY]: { name: '2020-08-09', pet: '2020-08-31' }
+      _modifications: { name: '2020-08-09', pet: '2020-08-31' },
+      __isMergeable
     }
 
     const expected = {
-      state: {
+      _state: {
         name: 'gustav',
         age: 13
       },
-      [MODS_KEY]: { name: '2020-08-09', pet: '2020-09-01' }
+      _modifications: { name: '2020-08-09', pet: '2020-09-01' },
+      __isMergeable
     }
 
     expect(merge(docA, docB)).to.eql(expected)
@@ -76,43 +81,47 @@ describe('merge objects', function () {
 
   it('three', function () {
     const docA = {
-      state: {
+      _state: {
         name: 'alice',
         age: 42,
         hungry: false,
         pet: 'pig'
       },
-      [MODS_KEY]: { hungry: '2020-07-14', pet: '2020-06-30' }
+      _modifications: { hungry: '2020-07-14', pet: '2020-06-30' },
+      __isMergeable
     }
 
     const docB = {
-      state: {
+      _state: {
         name: 'alice',
         age: 42,
         hungry: false,
         pet: 'goat'
       },
-      [MODS_KEY]: { hungry: '2020-07-02', pet: '2020-07-24' }
+      _modifications: { hungry: '2020-07-02', pet: '2020-07-24' },
+      __isMergeable
     }
 
     const docC = {
-      state: {
+      _state: {
         name: 'alice',
         age: 19,
         hungry: true,
         pet: 'dog'
       },
-      [MODS_KEY]: { age: '2020-07-02' }
+      _modifications: { age: '2020-07-02' },
+      __isMergeable
     }
 
     const expected = {
-      state: {
+      _state: {
         name: 'alice',
         age: 19,
         hungry: false,
         pet: 'goat'
       },
-      [MODS_KEY]: { age: '2020-07-02', hungry: '2020-07-14', pet: '2020-07-24' }
+      _modifications: { age: '2020-07-02', hungry: '2020-07-14', pet: '2020-07-24' },
+      __isMergeable
     }
 
     expect(merge(docA, merge(docB, docC))).to.eql(expected)
@@ -127,25 +136,28 @@ describe('merge objects', function () {
 
   it('nested properties, list as top level', function () {
     const docA = {
-      state: {
-        1: { state: { name: 'gustav', age: 22 }, [MODS_KEY]: {} },
-        2: { state: { name: 'bob', age: 44 }, [MODS_KEY]: { age: '2021-09-03' } }
+      _state: {
+        1: { _state: { name: 'gustav', age: 22 }, _modifications: {}, __isMergeable },
+        2: { _state: { name: 'bob', age: 44 }, _modifications: { age: '2021-09-03' }, __isMergeable }
       },
-      [MODS_KEY]: {}
+      _modifications: {},
+      __isMergeable
     }
 
     const docB = {
-      state: {
-        2: { state: { name: 'hi bob', age: 12 }, [MODS_KEY]: { name: '2021-09-02' } }
+      _state: {
+        2: { _state: { name: 'hi bob', age: 12 }, _modifications: { name: '2021-09-02' }, __isMergeable }
       },
-      [MODS_KEY]: { 1: '2021-09-01' }
+      _modifications: { 1: '2021-09-01' },
+      __isMergeable
     }
 
     const expected = {
-      state: {
-        2: { state: { name: 'hi bob', age: 44 }, [MODS_KEY]: { name: '2021-09-02', age: '2021-09-03' } }
+      _state: {
+        2: { _state: { name: 'hi bob', age: 44 }, _modifications: { name: '2021-09-02', age: '2021-09-03' }, __isMergeable }
       },
-      [MODS_KEY]: { 1: '2021-09-01' }
+      _modifications: { 1: '2021-09-01' },
+      __isMergeable
     }
 
     expect(merge(docA, docB)).to.eql(expected)

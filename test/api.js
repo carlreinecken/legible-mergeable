@@ -7,6 +7,7 @@ const MARKER = legibleMergeable.MERGEABLE_MARKER
 const newDate = date => (new Date(date)).toISOString()
 
 /* eslint-disable no-unused-expressions */
+/* eslint-disable no-unused-vars */
 
 describe('api', function () {
   describe('create', function () {
@@ -212,6 +213,35 @@ describe('api', function () {
       noMergeable: { uid: 'bar', age: 21 }
     })
 
+    it('set nested dump and merge', function () {
+      const replicaA = legibleMergeable.create(getSample())
+      const replicaB = replicaA.clone()
+
+      const nestedItem = legibleMergeable.create({ name: 'daniel' })
+
+      replicaB.get('foo').set('another', nestedItem)
+      replicaB.set(8, { quality: 'HD' }, { mergeable: true })
+      // is not gonna be a mergeable
+      replicaB.set(9, { size: 'L', [MARKER]: { size: '2' } })
+
+      const resultStatic = legibleMergeable.merge(replicaA, replicaB)
+      const result = replicaB.merge(replicaA)
+
+      expect(replicaA.size()).to.eql(3)
+      expect(replicaB.size()).to.eql(5)
+
+      expect(replicaB.get('foo').get('another')).instanceof(legibleMergeable.Mergeable)
+      expect(replicaB.get(8)).instanceof(legibleMergeable.Mergeable)
+      expect(replicaB.get(9)).not.be.an.instanceof(legibleMergeable.Mergeable)
+
+      expect(resultStatic).to.eql(result)
+      expect(replicaB.get('foo').get('another')).instanceof(legibleMergeable.Mergeable)
+      expect(result.get('foo').get('another')).instanceof(legibleMergeable.Mergeable)
+      expect(result.get(8)).instanceof(legibleMergeable.Mergeable)
+      expect(result.get(9)).not.be.an.instanceof(legibleMergeable.Mergeable)
+      expect(result.size()).to.eql(5)
+    })
+
     it('get nested objects', function () {
       const item = legibleMergeable.create(getSample())
 
@@ -314,7 +344,7 @@ describe('api', function () {
     })
   })
 
-  it('proxy', function () {
+  it.only('proxy', function () {
     const task = legibleMergeable.create({
       title: 'Life Support',
       done: false,
@@ -326,11 +356,13 @@ describe('api', function () {
         3: { title: 'Sleep', done: false }
       })
     })
+    console.log('uuqqq', task)
 
     const date = '2021-09-07'
 
     task.modify(task => {
       task.subtasks[4] = legibleMergeable.create({ title: 'Code' })
+      console.log('ttss', task)
       task.subtasks[1].title = task.subtasks[1].title + '!'
 
       for (const id in task.subtasks) {
