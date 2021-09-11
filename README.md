@@ -1,24 +1,22 @@
 # legibleMergeable
 
-In favor of simplicity rather than trying to take on everything, this library can make simple objects and its properties to a CRDT (Conflict-free Replicated Data Type). The output JSON is totally simple & legible. Among other things, because it doesn't keep a history.
+This is kinda a CRDT (Conflict-free Replicated Data Type), but a really *really* simple one. It can just represent an arbitrary object or a tree of objects with atomic non-CRDT (JSON) values. Atomic values are strings, numbers, booleans, null, arrays and non-CRDT objects.
 
-> Not for use in production. I use it only in a private app.
+It's not designed for realtime data input. Rather it's purpose is to have an easy solution to sync between multiple devices, where it's really improbable that a property was modified at the same time.
 
-It doesn't matter in which order different customized states are applied (associative, commutive and idompotent), conflicting changes will always be deterministically resolved. It will always prefer the newest change.
+The main goal for driving this project was readability: The serialized JSON Dumps you get to save the document on disk or to sent it somewhere over the network, almost looks like the initial object representation. I guess this has let to some unpopular design choices 😬
 
-> Currently it uses UTC Timestamps for this, which is flawed and should probably be replaced by some logical clock or hybrid.
+Conflicts are resolved by Last-Write-Wins (LWW). It doesn't matter in which order different modified states are applied (associative, commutive and idompotent), conflicting changes will always be deterministically resolved. It will always prefer the newest change.
 
-The merge will not merge characters in strings, it will only merge added, deleted and changed properties. If you have nested Mergeables a deletion of a parent object always overwrites any (later) modification of the deleted child object.
+> Currently it uses UTC Timestamps to track versions. It is strongly advised to not use the wall-clock, as it can be easily manipulated, be wrong or is just not exact enough. However the alternative would be to use a counter with a client UUID for *every* tracked property. UUIDs are not that compact, talk about readability... As mentioned before: The purpose of this CRDT was never for realtime concurrent editing. Just to enable seamless offline data editing with a bit smarter merging capabilities. For that expectations I think a timestamp is enough for now.
 
-When exporting the Mergeable as JSON it stays an object and thus stays legible.
-
-Judge for yourself, I gather this is rather legible:
+Anyway judge for yourself, I gather this is rather legible:
 
 ```json
 {
   1: {
     "id": 1,
-    "title": "Buy Sugar",
+    "title": "Buy Broccoli",
     "done": false,
     "^m": { "title": "2020-10-23T15:50:02.064Z" }
   },
@@ -35,7 +33,14 @@ Judge for yourself, I gather this is rather legible:
 ]
 ```
 
-Inside the objects is a property included for modification dates as `^m`. This is also used to detect a nested Mergeable. The child object gets only parsed and merged if the it has the identifier. The identifier can have an empty object.
+A few points:
+
+* This is a nested `Mergeable`. The root object here is used as unordered list.
+* In the real world where you have multiple clients that can add an object, you probably should use some form UUID (like nanoid) as id to prevent collisions.
+* The `^m` is the modification identifier and denotes that the current object is a `Mergeable` and holds all modification dates of all properties of that object.
+* The `^m` can have an empty object as value. Which just means, that no property was modified yet.
+* A child Mergeable gets only parsed and merged if it has the modification identifier. Otherwise it would be handled as atomic object.
+* If a date for a property exists but there is no value, it means that it was deleted (Also called tombstone). This information has to be kept, in case this document is merged with some older one, that doesn't know yet of the deletion.
 
 ## Usage
 
@@ -60,6 +65,10 @@ map(fn(item, key, date)[, options])
 
 ## MergeableArray: Ordered List
 
+The order of the list is one atomic value. Concurrent moves are not merged.
+
+What happens to added properties from other clients?
+
 ```json
 [
   {
@@ -78,13 +87,15 @@ map(fn(item, key, date)[, options])
     "^m": {
       1: "2020-10-21T10:00:00.000Z",
       2: "2020-10-21T10:00:00.000Z"
-      "^order": "2021-09-10"
+      "^order": "2021-09-10" // 1
     },
     "^id": "id",
-    "^order": "2021-09-10",
+    "^order": "2021-09-10", // 2
   },
 )
 ```
+
+Where to put it? 1 or 2?
 
 All list elements are expected to be a simple JSON object with at least an unique `id`. The objects can have any arbitrary properties and values. The JSON datatypes are allowed: string, number, boolean, arrays and objects.
 
@@ -103,7 +114,6 @@ const bob = legibleMergeable.Array([
 
 The method `legibleMergeable.Array([payload[, options]]) can be passed options. Following options are available:
 
-* `positions`: NOT IMPLEMENTED YET! Disable positions with `{ positions: false }`. No positions will be generated, no positions are considered when merging and existing positions are discarded. This can be useful when the array is supposed to be sorted by a property and not manually.
 * `identifier`: NOT IMPLEMENTED YET! Define own name for identifier in the objects instead of the default `id`.
 
 ### Add Element

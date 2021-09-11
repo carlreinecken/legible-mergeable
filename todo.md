@@ -1,6 +1,7 @@
 * research how to compress modification dates if there are extacly same of multiple properties
 * more options: set date when calling create(), pass mod key into static funktions (is kept in instances)
-* compare mergeables
+* same()/compare() are mergeables the same?
+* fix merging: always merge mergeables, even if their parent date doesn't match (do i really want that?)
 * NICE TO HAVE: throw error if the new date in `set()` is before the previous mod date (relative to the wall clock) (but this could be wanted) OR throw error if dates in merging are in the past relative to wall clock (this would make the merge coupled with outside info tho)
 
 ## hash
@@ -30,7 +31,7 @@ use cases
 
 ## static merge should handle raw dumps
 
-so far i use a specialized dump { state, '^m' } for the merge. which is kinda stupid, because i only do that, to recognize a mergeable. and because the merge tests dont pass a mergeable instance.
+so far i use a specialized dump { state, '^m' } for the merge. which is kinda stupid, because i only do that, to recognize a mergeable. and because the merge tests dont create a mergeable instance.
 
 the solution: offer support for instances *and* dumps 💁‍♀️ this would also enable the use of the merge function without ever needing the Mergeable Class
 

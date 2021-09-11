@@ -28,10 +28,15 @@ export function mergeFunction ({ a: docA, b: docB }) {
 
     // The property in A is newer
     if (aChangedAt > bChangedAt) {
+      // if: a and b are Mergeables, they should be merged
+      // else if: one property is a Mergeable:
+      //   - if A (later) is the Mergeable, just take that
+      //   - if B (earlier) is the Mergeable, i would need to recursively check
+      //     whether the Mergeable has a later date anywhere in its nested props
       if (util.hasKey(input.a.state, prop)) {
         result.state[prop] = util.deepCopy(input.a.state[prop])
-      }
-
+      } // else: The property was deleted
+      
       result.mods[prop] = input.a.mods[prop]
 
       continue
@@ -53,7 +58,7 @@ export function mergeFunction ({ a: docA, b: docB }) {
       result.mods[prop] = input.a.mods[prop]
     }
 
-    // Call the merge function recursively if both properties are mergeables
+    // Call the merge function recursively if both properties are Mergeables
     if (isPropertyMergeable(input.a.state[prop]) && isPropertyMergeable(input.b.state[prop])) {
       result.state[prop] = mergeFunction({
         a: { state: input.a.state[prop].state, [MOD_KEY]: input.a.state[prop][MOD_KEY] },
