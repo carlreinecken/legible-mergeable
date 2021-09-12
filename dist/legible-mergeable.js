@@ -27,17 +27,28 @@
     return [...new Set(array)]
   }
 
-  function mergeFunction ({ a: docA, b: docB }) {
-    function isPropertyMergeable (property) {
-      return isObject(property) && isObject(property[MERGEABLE_MARKER])
-    }
+  function hasMarker (property) {
+    return hasKey(property, MERGEABLE_MARKER) && isObject(property[MERGEABLE_MARKER])
+  }
 
+  function isPropertyMergeable (property) {
+    return isObject(property) && hasMarker(property)
+  }
+
+  function stateWithoutMarker (state) {
+    const result = { ...state };
+    delete result[MERGEABLE_MARKER];
+
+    return result
+  }
+
+  function mergeFunction ({ a: docA, b: docB }) {
     const input = {
-      a: { state: docA.state, mods: docA[MERGEABLE_MARKER] },
-      b: { state: docB.state, mods: docB[MERGEABLE_MARKER] }
+      a: { state: stateWithoutMarker(docA), mods: docA[MERGEABLE_MARKER] },
+      b: { state: stateWithoutMarker(docB), mods: docB[MERGEABLE_MARKER] }
     };
 
-    const result = { state: {}, mods: {} };
+    const result = { [MERGEABLE_MARKER]: {} };
 
     const properties = uniquenizeArray([].concat(
       Object.keys(input.a.state),
@@ -50,6 +61,8 @@
       const aChangedAt = input.a.mods[prop] ? new Date(input.a.mods[prop]) : null;
       const bChangedAt = input.b.mods[prop] ? new Date(input.b.mods[prop]) : null;
 
+      // console.log('mrgfn/loop', prop, aChangedAt, bChangedAt)
+
       // The property in A is newer
       if (aChangedAt > bChangedAt) {
         // if: a and b are Mergeables, they should be merged
@@ -58,10 +71,10 @@
         //   - if B (earlier) is the Mergeable, i would need to recursively check
         //     whether the Mergeable has a later date anywhere in its nested props
         if (hasKey(input.a.state, prop)) {
-          result.state[prop] = deepCopy(input.a.state[prop]);
+          result[prop] = deepCopy(input.a.state[prop]);
         } // else: The property was deleted
 
-        result.mods[prop] = input.a.mods[prop];
+        result[MERGEABLE_MARKER][prop] = input.a.mods[prop];
 
         continue
       }
@@ -69,24 +82,24 @@
       // The property in B is newer
       if (aChangedAt < bChangedAt) {
         if (hasKey(input.b.state, prop)) {
-          result.state[prop] = deepCopy(input.b.state[prop]);
+          result[prop] = deepCopy(input.b.state[prop]);
         }
 
-        result.mods[prop] = input.b.mods[prop];
+        result[MERGEABLE_MARKER][prop] = input.b.mods[prop];
 
         continue
       }
 
       // The modification date is on both sides the same
       if (hasKey(input.a.mods, prop)) {
-        result.mods[prop] = input.a.mods[prop];
+        result[MERGEABLE_MARKER][prop] = input.a.mods[prop];
       }
 
       // Call the merge function recursively if both properties are Mergeables
       if (isPropertyMergeable(input.a.state[prop]) && isPropertyMergeable(input.b.state[prop])) {
-        result.state[prop] = mergeFunction({
-          a: { state: input.a.state[prop].state, [MERGEABLE_MARKER]: input.a.state[prop][MERGEABLE_MARKER] },
-          b: { state: input.b.state[prop].state, [MERGEABLE_MARKER]: input.b.state[prop][MERGEABLE_MARKER] }
+        result[prop] = mergeFunction({
+          a: input.a.state[prop],
+          b: input.b.state[prop]
         });
 
         continue
@@ -94,24 +107,20 @@
 
       // The property is on both sides the same
       if (hasKey(input.a.state, prop)) {
-        result.state[prop] = deepCopy(input.a.state[prop]);
+        result[prop] = deepCopy(input.a.state[prop]);
       }
     }
-
-    result[MERGEABLE_MARKER] = result.mods;
-
-    delete result.mods;
 
     return result
   }
 
-  function createProxy (mergeable, options, Mergeable) {
+  // import { MERGEABLE_MARKER } from './constants'
+
+  function createProxy (mergeable, options) {
     return new Proxy(mergeable, {
       get (target, key) {
-        const item = target._state[key];
-
-        if (item instanceof Mergeable) {
-          return createProxy(item, options, Mergeable)
+        if (hasKey(target, key) && target[key].__isMergeable === true) {
+          return createProxy(target[key], options)
         }
 
         // I'm to be honest not sure if I want/need to support this.
@@ -130,7 +139,7 @@
         //   })
         // }
 
-        return item
+        return target[key]
       },
 
       set (target, key, value) {
@@ -147,295 +156,199 @@
         return true
       },
 
-      ownKeys (target) {
-        return Object.keys(target._state)
-      },
-
       getOwnPropertyDescriptor (target, key) {
-        if (target.has(key)) {
-          return {
-            enumerable: true,
-            configurable: true,
-            writable: true,
-            value: target.get(key)
-          }
+        if (hasKey(target, key)) {
+          return Reflect.getOwnPropertyDescriptor(target, key)
         }
+
+        return { enumerable: false, configurable: true, writable: true }
       }
     })
   }
 
-  /**
-   * Transform a given internal state.
-   * If the instance is found it gets transformed via the given callback
-   */
-  function transformInternalState (state, transformInstanceFn, Mergeable) {
-    return Object
-      .entries(state)
-      .reduce((result, [identifier, property]) => {
-        if (typeof property !== 'object') {
-          result[identifier] = property;
-        } else if (property instanceof Mergeable) {
-          result[identifier] = transformInstanceFn(property);
-        } else {
-          result[identifier] = deepCopy(property);
-        }
-
-        return result
-      }, {})
-  }
-
-  /**
-   * Transform a given dumped (raw) object.
-   * If the instance is found it gets transformed via the given callback
-   */
-  function transformDump (dump, transformInstanceFn) {
+  function transformMergeables (dump, transformFn) {
     return Object
       .entries(dump)
-      .reduce((result, [identifier, property]) => {
-        if (isObject(property) && isObject(property[MERGEABLE_MARKER])) {
-          result[identifier] = transformInstanceFn(property);
+      .reduce((result, [key, property]) => {
+        if (typeof property !== 'object') {
+          // console.log('trMrg/no object', key)
+          result[key] = property;
+        } else if (hasMarker(property)) {
+          // console.log('trMrg/has marker', key)
+          result[key] = transformFn(property);
         } else {
-          result[identifier] = property;
+          // TODO: deep clone?
+          // console.log('trMrg/deep clone', key)
+          result[key] = deepCopy(property);
+          // result[key] = property
         }
 
+        // console.log('trMrg/result', key, result)
         return result
       }, {})
   }
 
-  function mapMergeableToMergeObject (doc, Mergeable) {
-    return {
-      state: transformInternalState(
-        doc._state,
-        property => mapMergeableToMergeObject(property, Mergeable),
-        Mergeable
-      ),
-      [MERGEABLE_MARKER]: doc._modifications
-    }
+  function setMergeablePrototype (dump) {
+    const result = transformMergeables(dump, (item) => setMergeablePrototype(item));
+
+    result[MERGEABLE_MARKER] = result[MERGEABLE_MARKER] || {};
+
+    Object.defineProperty(result, MERGEABLE_MARKER, { enumerable: false });
+
+    return Object.setPrototypeOf(result, mergeablePrototype)
   }
 
-  class Mergeable {
+  const mergeablePrototype = {
     get __isMergeable () {
       return true
-    }
+    },
 
-    constructor (state, modifications) {
-      this._state = transformDump(state, property => Mergeable.createFromDump(property));
-      this._modifications = modifications;
-    }
-
-    static createFromDump (dump) {
-      let modifications = {};
-      const state = deepCopy(dump || {});
-
-      if (hasKey(state, MERGEABLE_MARKER)) {
-        modifications = state[MERGEABLE_MARKER];
-        delete state[MERGEABLE_MARKER];
-      }
-
-      return new Mergeable(state, modifications)
-    }
+    // TODO: i think it would be better if they call the createProxy function themself
+    // otherwise the user might be inclined to call this function a lot, which
+    // is not really good to create new proxies all the time, right?
+    get _proxy () {
+      return createProxy(this)
+    },
 
     has (key) {
-      return hasKey(this._state, key)
-    }
+      return hasKey(this, key)
+    },
 
     get (key, fallback) {
       if (this.has(key)) {
-        return this._state[key]
+        return this[key]
       }
 
       return fallback
-    }
+    },
 
     refresh (key, options) {
       options = options || {};
 
-      this._modifications[key] = newDate(options.date);
-    }
+      this[MERGEABLE_MARKER][key] = newDate(options.date);
+    },
 
     set (key, value, options) {
       options = options || {};
 
-      if (options.mergeable) {
-        value = Mergeable.createFromDump(value);
-      }
+      if (options.mergeable || hasMarker(value)) ;
 
-      this._state[key] = value;
-      this._modifications[key] = newDate(options.date);
+      this[key] = value;
+      this[MERGEABLE_MARKER][key] = newDate(options.date);
 
-      return this._state[key]
-    }
+      return this[key]
+    },
 
     delete (key, options) {
       options = options || {};
 
-      delete this._state[key];
-      this._modifications[key] = newDate(options.date);
-    }
+      delete this[key];
 
+      this[MERGEABLE_MARKER][key] = newDate(options.date);
+    },
+
+    // TODO: do i really need this? or should they just get the proxy directly?
     modify (callback, options) {
       options = options || {};
 
-      callback(createProxy(this, options, Mergeable));
+      callback(createProxy(this, options));
 
       return this
-    }
+    },
 
     date (key) {
-      return this._modifications[key]
-    }
+      return this[MERGEABLE_MARKER][key]
+    },
 
     size () {
-      return Object.keys(this._state).length
-    }
+      return Object.keys(this).length
+    },
 
-    compare (docB) {
-      const modifications = {
-        a: Object.entries(this._modifications),
-        b: Object.entries(docB._modifications)
-      };
-
-      if (modifications.a.length !== modifications.b.length) {
-        return false
-      }
-
-      for (const [key, date] in modifications.a) {
-        if (date !== modifications.b[key]) {
-          return false
-        }
-      }
-
-      return true
-    }
-
-    /*
-     * Only use this when you need to iterate over all properties, to work on them
-     */
+    // TODO: so its basically a shallow cloning of this :D
+    // TODO: without the marker please!
     state () {
-      return { ...this._state }
-    }
+      return { ...this }
+    },
 
     /*
      * The state without the modifications, it's the "pure" document
      */
     base () {
-      return transformInternalState(this._state, property => property.base(), Mergeable)
-    }
-
-    meta () {
-      return { [MERGEABLE_MARKER]: { ...this._modifications } }
-    }
+      return transformMergeables(this, property => property.base())
+    },
 
     /*
      * Dumps the object as native simple object
      */
     dump () {
       return {
-        ...transformInternalState(this._state, property => property.dump(), Mergeable),
-        [MERGEABLE_MARKER]: this._modifications
+        ...transformMergeables(this, property => property.dump()),
+        [MERGEABLE_MARKER]: this[MERGEABLE_MARKER]
       }
-    }
+    },
 
     toString () {
       return JSON.stringify(this.dump())
-    }
+    },
 
     toJSON () {
       return this.dump()
-    }
+    },
 
     clone () {
-      return new Mergeable(deepCopy(this._state), { ...this._modifications })
-    }
+      return setMergeablePrototype(this || {})
+      // return createPrototype(transformMergeables(this || {}, createPrototype))
+    },
 
     merge (docB) {
-      if (!(docB instanceof Mergeable)) {
-        throw TypeError('Only instances of Mergeable can be merged')
+      if (!isObject(docB) || !hasMarker(docB)) {
+        // TODO: does a marker even need to exist (on the root)?
+        throw TypeError('Only objects with the mergeable marker can be merged')
       }
 
-      const result = mergeFunction({ a: mapMergeableToMergeObject(this, Mergeable), b: mapMergeableToMergeObject(docB, Mergeable) });
+      const result = mergeFunction({ a: this, b: docB });
 
-      this._state = transformDump(result.state, dump => new Mergeable(dump.state, dump[MERGEABLE_MARKER]));
-      this._modifications = result[MERGEABLE_MARKER];
+      for (const key in this) {
+        if (!hasKey(this, key)) {
+          continue
+        }
+
+        if (hasKey(result, key)) {
+          this[key] = result[key];
+        } else {
+          delete this[key];
+        }
+      }
+
+      this[MERGEABLE_MARKER] = result[MERGEABLE_MARKER];
 
       return this
+    },
+
+    filter () {
+    },
+
+    map () {
     }
-
-    filter (callback, options) {
-      options = options || {};
-
-      const result = {};
-
-      for (const key in this._state) {
-        let value = this._state[key];
-
-        if (options.proxy === true && value instanceof Mergeable) {
-          value = createProxy(value, null, Mergeable);
-        }
-
-        if (callback(value, key, this._modifications[key])) {
-          result[key] = this._state[key];
-        }
-      }
-
-      return result
-    }
-
-    map (callback, options) {
-      options = options || {};
-
-      const toArray = options.toArray === true;
-      const useProxy = options.proxy === true;
-      const result = toArray ? [] : {};
-
-      for (const key in this._state) {
-        let value = this._state[key];
-
-        if (useProxy && value instanceof Mergeable) {
-          value = createProxy(value, null, Mergeable);
-        }
-
-        const evaluation = callback(value, key, this._modifications[key]);
-
-        if (useProxy && evaluation instanceof Mergeable) {
-          // Otherwise a proxy would be returned
-          throw new TypeError('You can not return an instance of Mergeable')
-        }
-
-        if (toArray === true) {
-          result.push(evaluation);
-        } else {
-          result[key] = evaluation;
-        }
-      }
-
-      return result
-    }
-
-    /*
-     * Experimental
-     */
-    get _proxy () {
-      return createProxy(this, null, Mergeable)
-    }
-  }
+  };
 
   var legibleMergeable = {
     create (dump) {
-      return Mergeable.createFromDump(dump)
+      return setMergeablePrototype(dump || {})
     },
 
     merge (docA, docB) {
-      if (!(docA instanceof Mergeable) || !(docB instanceof Mergeable)) {
-        throw TypeError('Only instances of Mergeable can be merged')
+      if (!isObject(docA) || !hasMarker(docA) || !isObject(docB) || !hasMarker(docB)) {
+        // TODO: does a marker even need to exist (on the root)?
+        throw TypeError('Only objects with the mergeable marker can be merged')
       }
 
-      return docA.clone().merge(docB)
+      const result = mergeFunction({ a: docA, b: docB });
+
+      return setMergeablePrototype(result)
     },
 
     _mergeFunction: mergeFunction,
-
-    Mergeable: Mergeable,
 
     MERGEABLE_MARKER
   };

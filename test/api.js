@@ -1,17 +1,20 @@
 const expect = require('chai').expect
 
 const legibleMergeable = require('../dist/legible-mergeable.js')
-const Mergeable = legibleMergeable.Mergeable
+// const Mergeable = legibleMergeable.Mergeable
 const MARKER = legibleMergeable.MERGEABLE_MARKER
 
 const newDate = date => (new Date(date)).toISOString()
 
+/* eslint-disable no-unused-vars */
 /* eslint-disable no-unused-expressions */
 
 describe('api', function () {
   describe('create', function () {
     it('an empty object', function () {
       const item = legibleMergeable.create()
+
+      // console.log('item', item.dump())
 
       expect(item.base()).to.eql({})
       expect(item.dump()).to.eql({ [MARKER]: {} })
@@ -87,9 +90,11 @@ describe('api', function () {
         price: 140
       })
 
-      item._proxy.price = 42
-      item._proxy.isOpen = true
-      delete item._proxy.name
+      const proxy = item._proxy
+
+      proxy.price = 42
+      proxy.isOpen = true
+      delete proxy.name
 
       const dump = item.dump()
       const changes = dump[MARKER]
@@ -186,7 +191,7 @@ describe('api', function () {
         isOpen: false
       }
 
-      expect(replicaC1).to.eql(replicaC2)
+      expect(replicaC1.base()).to.eql(replicaC2.base())
       expect(dump).to.eql(expected)
       expect(replicaA.size()).to.equal(4)
       expect(replicaB.size()).to.equal(3)
@@ -215,10 +220,10 @@ describe('api', function () {
     it('get nested objects', function () {
       const item = legibleMergeable.create(getSample())
 
-      expect(item.get(7)).to.be.an.instanceof(Mergeable)
-      expect(item.get('foo')).to.be.an.instanceof(Mergeable)
-      expect(item.get('foo').get('nested')).to.be.an.instanceof(Mergeable)
-      expect(item.get('noMergeable')).not.to.be.an.instanceof(Mergeable)
+      expect(item.get(7).__isMergeable).to.be.true
+      expect(item.get('foo').__isMergeable).to.be.true
+      expect(item.get('foo').get('nested').__isMergeable).to.be.true
+      expect(item.get('noMergeable').__isMergeable).to.be.undefined
     })
 
     it('change properties of nested objects', function () {
@@ -258,8 +263,17 @@ describe('api', function () {
 
     it('clone', function () {
       const item = legibleMergeable.create(getSample())
+      item.refresh(7)
+      item.foo.refresh('age')
+
+      // console.log(item.dump())
+      // console.log('-----')
+
       const itemClone = item.clone().dump()
 
+      // console.log(item.clone().dump())
+
+      // expect(item.dump()).to.eql(itemClone)
       expect(item.dump()).to.eql(itemClone).but.to.not.equal(itemClone)
     })
 
@@ -395,7 +409,7 @@ describe('api', function () {
     it('whatsup with nested')
   })
 
-  describe('array like functions', function () {
+  xdescribe('array like functions', function () {
     it('filter simple state', function () {
       const doc = legibleMergeable.create({ 0: 'Abc', 1: 'df', 2: 'g', 3: '' })
 

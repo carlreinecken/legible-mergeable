@@ -1,10 +1,11 @@
-export function createProxy (mergeable, options, Mergeable) {
+import * as util from './util'
+// import { MERGEABLE_MARKER } from './constants'
+
+export function createProxy (mergeable, options) {
   return new Proxy(mergeable, {
     get (target, key) {
-      const item = target._state[key]
-
-      if (item instanceof Mergeable) {
-        return createProxy(item, options, Mergeable)
+      if (util.hasKey(target, key) && target[key].__isMergeable === true) {
+        return createProxy(target[key], options)
       }
 
       // I'm to be honest not sure if I want/need to support this.
@@ -23,7 +24,7 @@ export function createProxy (mergeable, options, Mergeable) {
       //   })
       // }
 
-      return item
+      return target[key]
     },
 
     set (target, key, value) {
@@ -40,19 +41,12 @@ export function createProxy (mergeable, options, Mergeable) {
       return true
     },
 
-    ownKeys (target) {
-      return Object.keys(target._state)
-    },
-
     getOwnPropertyDescriptor (target, key) {
-      if (target.has(key)) {
-        return {
-          enumerable: true,
-          configurable: true,
-          writable: true,
-          value: target.get(key)
-        }
+      if (util.hasKey(target, key)) {
+        return Reflect.getOwnPropertyDescriptor(target, key)
       }
+
+      return { enumerable: false, configurable: true, writable: true }
     }
   })
 }

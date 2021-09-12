@@ -1,3 +1,5 @@
+import { MERGEABLE_MARKER } from './constants'
+
 export function hasKey (object, key) {
   return Object.prototype.hasOwnProperty.call(object, key)
 }
@@ -17,4 +19,8 @@ export function newDate (date) {
 
 export function uniquenizeArray (array) {
   return [...new Set(array)]
+}
+
+export function hasMarker (property) {
+  return hasKey(property, MERGEABLE_MARKER) && isObject(property[MERGEABLE_MARKER])
 }

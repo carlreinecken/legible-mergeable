@@ -1,23 +1,25 @@
+import * as util from './util'
 import { MERGEABLE_MARKER } from './constants'
 import { mergeFunction } from './merge-function'
-import { Mergeable } from './Mergeable.class'
+import { setMergeablePrototype } from './mergeable-prototype'
 
 export default {
   create (dump) {
-    return Mergeable.createFromDump(dump)
+    return setMergeablePrototype(dump || {})
   },
 
   merge (docA, docB) {
-    if (!(docA instanceof Mergeable) || !(docB instanceof Mergeable)) {
-      throw TypeError('Only instances of Mergeable can be merged')
+    if (!util.isObject(docA) || !util.hasMarker(docA) || !util.isObject(docB) || !util.hasMarker(docB)) {
+      // TODO: does a marker even need to exist (on the root)?
+      throw TypeError('Only objects with the mergeable marker can be merged')
     }
 
-    return docA.clone().merge(docB)
+    const result = mergeFunction({ a: docA, b: docB })
+
+    return setMergeablePrototype(result)
   },
 
   _mergeFunction: mergeFunction,
-
-  Mergeable: Mergeable,
 
   MERGEABLE_MARKER
 }
