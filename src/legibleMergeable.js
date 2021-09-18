@@ -1,7 +1,7 @@
-import * as util from './util'
-import { MERGEABLE_MARKER } from './constants'
-import { mergeFunction } from './merge-function'
-import { setMergeablePrototype } from './mergeable-prototype'
+import * as util from './util.js'
+import { MERGEABLE_MARKER } from './constants.js'
+import { mergeFunction } from './merge-function.js'
+import { setMergeablePrototype } from './mergeable-prototype.js'
 
 export default {
   create (dump) {

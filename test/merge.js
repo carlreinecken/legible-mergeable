@@ -1,6 +1,7 @@
-const expect = require('chai').expect
+import chai from 'chai'
+import legibleMergeable from '../src/legibleMergeable.js'
 
-const legibleMergeable = require('../dist/legible-mergeable.js')
+const { expect } = chai
 const mergeFunction = legibleMergeable._mergeFunction
 const MODS_KEY = legibleMergeable.MERGEABLE_MARKER
 

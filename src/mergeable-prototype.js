@@ -1,8 +1,8 @@
-import * as util from './util'
-import { MERGEABLE_MARKER } from './constants'
-import { mergeFunction } from './merge-function'
-import { createProxy } from './proxy'
-import { transformMergeables } from './recursive'
+import * as util from './util.js'
+import { MERGEABLE_MARKER } from './constants.js'
+import { mergeFunction } from './merge-function.js'
+import { createProxy } from './proxy.js'
+import { transformMergeables } from './recursive.js'
 
 export function setMergeablePrototype (dump) {
   const result = transformMergeables(dump, (item) => setMergeablePrototype(item))
@@ -146,6 +146,7 @@ export const mergeablePrototype = {
   },
 
   filter () {
+    return this.state()
   },
 
   map () {

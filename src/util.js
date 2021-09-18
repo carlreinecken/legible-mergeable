@@ -1,4 +1,4 @@
-import { MERGEABLE_MARKER } from './constants'
+import { MERGEABLE_MARKER } from './constants.js'
 
 export function hasKey (object, key) {
   return Object.prototype.hasOwnProperty.call(object, key)

@@ -191,6 +191,8 @@
   function setMergeablePrototype (dump) {
     const result = transformMergeables(dump, (item) => setMergeablePrototype(item));
 
+    // TODO: when this result the recursive/clone test fails
+    //       when this is from dump the merge/a cloned and changed object test fails
     result[MERGEABLE_MARKER] = result[MERGEABLE_MARKER] || {};
 
     Object.defineProperty(result, MERGEABLE_MARKER, { enumerable: false });
@@ -326,6 +328,7 @@
     },
 
     filter () {
+      return this.state()
     },
 
     map () {

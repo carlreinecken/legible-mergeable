@@ -1,5 +1,5 @@
-import * as util from './util'
-import { MERGEABLE_MARKER as MARKER } from './constants'
+import * as util from './util.js'
+import { MERGEABLE_MARKER as MARKER } from './constants.js'
 
 function isPropertyMergeable (property) {
   return util.isObject(property) && util.hasMarker(property)

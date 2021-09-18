@@ -1,9 +1,8 @@
-const expect = require('chai').expect
+import chai from 'chai'
+import legibleMergeable from '../src/legibleMergeable.js'
 
-const legibleMergeable = require('../dist/legible-mergeable.js')
-// const Mergeable = legibleMergeable.Mergeable
+const { expect } = chai
 const MARKER = legibleMergeable.MERGEABLE_MARKER
-
 const newDate = date => (new Date(date)).toISOString()
 
 /* eslint-disable no-unused-vars */
