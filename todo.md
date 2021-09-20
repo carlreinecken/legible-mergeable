@@ -1,10 +1,12 @@
-* research how to compress modification dates if there are extacly same of multiple properties
 * more options: set date when calling create(), pass mod key into static funktions (is kept in instances)
+* lazy vmodel!
 * same()/compare() are mergeables the same?
-* fix merging: always merge mergeables, even if their parent date doesn't match (do i really want that?)
+* static merge should handle raw dumps
+* cache nested proxies
+* NICE TO HAVE: research how to compress modification dates if there are extacly same of multiple properties
 * NICE TO HAVE: throw error if the new date in `set()` is before the previous mod date (relative to the wall clock) (but this could be wanted) OR throw error if dates in merging are in the past relative to wall clock (this would make the merge coupled with outside info tho)
 
-## hash
+## compare
 
 to compare two states and check whether they diverged
 
@@ -13,21 +15,31 @@ states can be the same but their modification dates can differ. so i need to has
 i also need to know when a merge didnt/wont change anything
 
 * calculate on demand
-* calculate every time sonething changes
-
-just conpare the latest date
+* calculate every time something changes
 
 ```
-doc.hasChangedSince(date)
+docA.compare(docB)
 
-doc.compare(docB)
+legibleMergeable.compare(docA, docB)
 ```
 
-use cases
+### use case: merging
 
-* comparing latest date
-  * prevent merge (and upload)
-  * detect change in formular 
+no need, instead:
+
+compare latest date of property (ignoring & overwriting nested changes)
+
+### use case: detect change in formular to disable "save"
+
+no need, modification dates don't matter
+
+* compare stringified base()
+
+### use case: prevent upload ("will a merge change sonething?")
+
+* merge itself returns a boolean whether something was changed
+* merge itself throws error if nothing was changed
+* before merge: deep comparison of all modification dates?
 
 ## static merge should handle raw dumps
 
