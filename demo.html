@@ -139,7 +139,7 @@
                         <div>
                             <!-- the proxy is only completely reactive when the list item -->
                             <!-- existed already in the list it was cloned from -->
-                            <input type="text" v-model="item._proxy.title" />
+                            <input type="text" v-model.lazy="item._proxy.title" />
                             <!-- <input type="text" v-model="item._proxy.title" /> -->
                             <!-- <input type="text" -->
                             <!--        :value="item.get('title')" -->
@@ -210,8 +210,7 @@ const app = new Vue({
         sendToClient (clientIndex) {
             if (this.sendFrom == null) return
 
-            // this.clients[clientIndex].list.merge(this.clients[this.sendFrom].list)
-            this.clients[clientIndex].list = legibleMergeable(
+            this.clients[clientIndex].list = legibleMergeable.merge(
                 this.clients[clientIndex].list,
                 this.clients[this.sendFrom].list
             )
