@@ -1,5 +1,4 @@
 import * as util from './util.js'
-// import { MERGEABLE_MARKER } from './constants'
 
 export function createProxy (mergeable, options) {
   return new Proxy(mergeable, {

@@ -13,8 +13,6 @@ describe('api', function () {
     it('an empty object', function () {
       const item = legibleMergeable.create()
 
-      // console.log('item', item.dump())
-
       expect(item.base()).to.eql({})
       expect(item.dump()).to.eql({ [MARKER]: {} })
     })
@@ -178,7 +176,7 @@ describe('api', function () {
       replicaB.delete('price', { date })
 
       const replicaC1 = legibleMergeable.merge(replicaA, replicaB)
-      const replicaC2 = replicaB.merge(replicaA)
+      const replicaC2 = legibleMergeable.merge(replicaB, replicaA)
 
       const dump = replicaC1.dump()
       const changes = dump[MARKER]
@@ -262,17 +260,10 @@ describe('api', function () {
 
     it('clone', function () {
       const item = legibleMergeable.create(getSample())
-      item.refresh(7)
-      item.foo.refresh('age')
-
-      // console.log(item.dump())
-      // console.log('-----')
 
       const itemClone = item.clone().dump()
 
-      // console.log(item.clone().dump())
-
-      // expect(item.dump()).to.eql(itemClone)
+      expect(item.dump()).to.eql(itemClone)
       expect(item.dump()).to.eql(itemClone).but.to.not.equal(itemClone)
     })
 
@@ -304,10 +295,10 @@ describe('api', function () {
       replicaClone.get(3).modify(ob => (ob.authors = [...ob.authors, 'Daisy']), { date })
       replicaClone.get('3').delete('name', { date })
 
-      const replicaResultStatic = legibleMergeable.merge(replicaOriginal, replicaClone)
-      const replicaResult = replicaClone.merge(replicaOriginal)
+      const replicaResultA = legibleMergeable.merge(replicaOriginal, replicaClone)
+      const replicaResultB = legibleMergeable.merge(replicaClone, replicaOriginal)
 
-      const dump = replicaResultStatic.dump()
+      const dump = replicaResultA.dump()
 
       const expected = {
         1: {
@@ -322,7 +313,7 @@ describe('api', function () {
         [MARKER]: { 1: '2021-08-01', 2: date }
       }
 
-      expect(replicaResultStatic).to.eql(replicaResult)
+      expect(replicaResultA).to.eql(replicaResultB)
       expect(dump).to.eql(expected)
     })
   })
@@ -408,7 +399,7 @@ describe('api', function () {
     it('whatsup with nested')
   })
 
-  xdescribe('array like functions', function () {
+  describe('array like functions', function () {
     it('filter simple state', function () {
       const doc = legibleMergeable.create({ 0: 'Abc', 1: 'df', 2: 'g', 3: '' })
 
@@ -422,17 +413,15 @@ describe('api', function () {
     it('filter nested', function () {
       const doc = legibleMergeable.create()
 
-      doc.set(100, { age: 12 }, { mergeable: false })
-      doc.set(101, { age: 23 }, { mergeable: true })
+      doc.set(100, { age: 12 })
+      doc.set(101, { age: 23 })
 
       const item102 = legibleMergeable.create({ age: 72 })
       doc.set(102, item102)
 
-      const filteredNormal = doc.filter(item => item.age % 3 === 0, { proxy: false })
-      const filteredWithProxy = doc.filter(item => item.age % 3 === 0, { proxy: true })
+      const filtered = doc.filter(item => item.age % 3 === 0)
 
-      expect(filteredNormal).to.be.eql({ 100: { age: 12 } })
-      expect(filteredWithProxy).to.be.eql({ 100: { age: 12 }, 102: item102 })
+      expect(filtered).to.be.eql({ 100: { age: 12 }, 102: item102 })
     })
 
     it('filter by modification date')
@@ -445,11 +434,9 @@ describe('api', function () {
         hox: { base: 24, multiplier: 2 }
       })
 
-      const mappedNormal = doc.map(item => item.base * item.multiplier, { proxy: false })
-      const mappedWithProxy = doc.map(item => item.base * item.multiplier, { proxy: true, toArray: true })
+      const mapped = doc.map(item => item.base * item.multiplier)
 
-      expect(mappedNormal).to.be.eql({ hox: 48, hqm: NaN, owz: NaN, vpt: NaN })
-      expect(mappedWithProxy).to.be.eql([6, -50.4, 147, 48])
+      expect(mapped).to.be.eql([6, -50.4, 147, 48])
     })
   })
 })

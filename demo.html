@@ -210,7 +210,11 @@ const app = new Vue({
         sendToClient (clientIndex) {
             if (this.sendFrom == null) return
 
-            this.clients[clientIndex].list.merge(this.clients[this.sendFrom].list)
+            // this.clients[clientIndex].list.merge(this.clients[this.sendFrom].list)
+            this.clients[clientIndex].list = legibleMergeable(
+                this.clients[clientIndex].list,
+                this.clients[this.sendFrom].list
+            )
 
             this.change++
         },

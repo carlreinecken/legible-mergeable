@@ -1,15 +1,12 @@
 import * as util from './util.js'
 import { MERGEABLE_MARKER } from './constants.js'
-import { mergeFunction } from './merge-function.js'
 import { createProxy } from './proxy.js'
 import { transformMergeables } from './recursive.js'
 
 export function setMergeablePrototype (dump) {
   const result = transformMergeables(dump, (item) => setMergeablePrototype(item))
 
-  // TODO: when this result the recursive/clone test fails
-  //       when this is from dump the merge/a cloned and changed object test fails
-  result[MERGEABLE_MARKER] = result[MERGEABLE_MARKER] || {}
+  result[MERGEABLE_MARKER] = { ...dump[MERGEABLE_MARKER] } || {}
 
   Object.defineProperty(result, MERGEABLE_MARKER, { enumerable: false })
 
@@ -84,7 +81,7 @@ export const mergeablePrototype = {
     return Object.keys(this).length
   },
 
-  // TODO: so its basically a shallow cloning of this :D
+  // TODO: so its basically a shallow cloning of this..?
   // TODO: without the marker please!
   state () {
     return { ...this }
@@ -117,38 +114,40 @@ export const mergeablePrototype = {
 
   clone () {
     return setMergeablePrototype(this || {})
-    // return createPrototype(transformMergeables(this || {}, createPrototype))
   },
 
-  merge (docB) {
-    if (!util.isObject(docB) || !util.hasMarker(docB)) {
-      // TODO: does a marker even need to exist (on the root)?
-      throw TypeError('Only objects with the mergeable marker can be merged')
-    }
-
-    const result = mergeFunction({ a: this, b: docB })
+  filter (callback) {
+    const result = {}
 
     for (const key in this) {
       if (!util.hasKey(this, key)) {
         continue
       }
 
-      if (util.hasKey(result, key)) {
-        this[key] = result[key]
-      } else {
-        delete this[key]
+      const value = this[key]
+
+      if (callback(value, key, this[MERGEABLE_MARKER][key])) {
+        result[key] = value
       }
     }
 
-    this[MERGEABLE_MARKER] = result[MERGEABLE_MARKER]
-
-    return this
+    return result
   },
 
-  filter () {
-    return this.state()
-  },
+  map (callback) {
+    const result = []
 
-  map () {
+    for (const key in this) {
+      if (!util.hasKey(this, key)) {
+        continue
+      }
+
+      const value = this[key]
+      const evaluation = callback(value, key, this[MERGEABLE_MARKER][key])
+
+      result.push(evaluation)
+    }
+
+    return result
   }
 }

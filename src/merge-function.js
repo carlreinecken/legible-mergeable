@@ -27,11 +27,10 @@ export function mergeFunction ({ a: docA, b: docB }) {
     Object.keys(input.b.mods)
   ))
 
+  // TODO: rename prop to key
   for (const prop of properties) {
     const aChangedAt = input.a.mods[prop] ? new Date(input.a.mods[prop]) : null
     const bChangedAt = input.b.mods[prop] ? new Date(input.b.mods[prop]) : null
-
-    // console.log('mrgfn/loop', prop, aChangedAt, bChangedAt)
 
     // The property in A is newer
     if (aChangedAt > bChangedAt) {

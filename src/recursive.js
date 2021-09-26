@@ -1,23 +1,29 @@
 import * as util from './util.js'
 
 export function transformMergeables (dump, transformFn) {
-  return Object
-    .entries(dump)
-    .reduce((result, [key, property]) => {
-      if (typeof property !== 'object') {
-        // console.log('trMrg/no object', key)
-        result[key] = property
-      } else if (util.hasMarker(property)) {
-        // console.log('trMrg/has marker', key)
-        result[key] = transformFn(property)
-      } else {
-        // TODO: deep clone?
-        // console.log('trMrg/deep clone', key)
-        result[key] = util.deepCopy(property)
-        // result[key] = property
-      }
+  const result = {}
 
-      // console.log('trMrg/result', key, result)
-      return result
-    }, {})
+  for (const key in dump) {
+    if (!util.hasKey(dump, key)) {
+      continue
+    }
+
+    const property = dump[key]
+
+    // TODO: add condition branch to check if key is MERGEABLE_MARKER
+    // an then skip it, because the setMergeablePrototype sets it shallow
+    // cloned by itself (which should be enough
+
+    if (typeof property !== 'object') {
+      result[key] = property
+    } else if (util.hasMarker(property)) {
+      result[key] = transformFn(property)
+    } else {
+      result[key] = util.deepCopy(property)
+      // TODO: is deep copy ok?
+      // result[key] = property
+    }
+  }
+
+  return result
 }
