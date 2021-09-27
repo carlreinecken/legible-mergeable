@@ -1,10 +1,10 @@
 import * as util from './util.js'
 import { MERGEABLE_MARKER } from './constants.js'
 import { createProxy } from './proxy.js'
-import { transformMergeables } from './recursive.js'
+import { transformMergeable } from './transform-mergeable.js'
 
 export function setMergeablePrototype (dump) {
-  const result = transformMergeables(dump, (item) => setMergeablePrototype(item))
+  const result = transformMergeable(dump, (item) => setMergeablePrototype(item))
 
   result[MERGEABLE_MARKER] = { ...dump[MERGEABLE_MARKER] } || {}
 
@@ -91,7 +91,7 @@ export const mergeablePrototype = {
    * The state without the modifications, it's the "pure" document
    */
   base () {
-    return transformMergeables(this, property => property.base())
+    return transformMergeable(this, property => property.base())
   },
 
   /*
@@ -99,7 +99,7 @@ export const mergeablePrototype = {
    */
   dump () {
     return {
-      ...transformMergeables(this, property => property.dump()),
+      ...transformMergeable(this, property => property.dump()),
       [MERGEABLE_MARKER]: this[MERGEABLE_MARKER]
     }
   },

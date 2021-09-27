@@ -27,10 +27,9 @@ export function mergeFunction ({ a: docA, b: docB }) {
     Object.keys(input.b.mods)
   ))
 
-  // TODO: rename prop to key
-  for (const prop of properties) {
-    const aChangedAt = input.a.mods[prop] ? new Date(input.a.mods[prop]) : null
-    const bChangedAt = input.b.mods[prop] ? new Date(input.b.mods[prop]) : null
+  for (const key of properties) {
+    const aChangedAt = input.a.mods[key] ? new Date(input.a.mods[key]) : null
+    const bChangedAt = input.b.mods[key] ? new Date(input.b.mods[key]) : null
 
     // The property in A is newer
     if (aChangedAt > bChangedAt) {
@@ -39,44 +38,44 @@ export function mergeFunction ({ a: docA, b: docB }) {
       //   - if A (later) is the Mergeable, just take that
       //   - if B (earlier) is the Mergeable, i would need to recursively check
       //     whether the Mergeable has a later date anywhere in its nested props
-      if (util.hasKey(input.a.state, prop)) {
-        result[prop] = util.deepCopy(input.a.state[prop])
+      if (util.hasKey(input.a.state, key)) {
+        result[key] = util.deepCopy(input.a.state[key])
       } // else: The property was deleted
 
-      result[MARKER][prop] = input.a.mods[prop]
+      result[MARKER][key] = input.a.mods[key]
 
       continue
     }
 
     // The property in B is newer
     if (aChangedAt < bChangedAt) {
-      if (util.hasKey(input.b.state, prop)) {
-        result[prop] = util.deepCopy(input.b.state[prop])
+      if (util.hasKey(input.b.state, key)) {
+        result[key] = util.deepCopy(input.b.state[key])
       }
 
-      result[MARKER][prop] = input.b.mods[prop]
+      result[MARKER][key] = input.b.mods[key]
 
       continue
     }
 
     // The modification date is on both sides the same
-    if (util.hasKey(input.a.mods, prop)) {
-      result[MARKER][prop] = input.a.mods[prop]
+    if (util.hasKey(input.a.mods, key)) {
+      result[MARKER][key] = input.a.mods[key]
     }
 
     // Call the merge function recursively if both properties are Mergeables
-    if (isPropertyMergeable(input.a.state[prop]) && isPropertyMergeable(input.b.state[prop])) {
-      result[prop] = mergeFunction({
-        a: input.a.state[prop],
-        b: input.b.state[prop]
+    if (isPropertyMergeable(input.a.state[key]) && isPropertyMergeable(input.b.state[key])) {
+      result[key] = mergeFunction({
+        a: input.a.state[key],
+        b: input.b.state[key]
       })
 
       continue
     }
 
     // The property is on both sides the same
-    if (util.hasKey(input.a.state, prop)) {
-      result[prop] = util.deepCopy(input.a.state[prop])
+    if (util.hasKey(input.a.state, key)) {
+      result[key] = util.deepCopy(input.a.state[key])
     }
   }
 

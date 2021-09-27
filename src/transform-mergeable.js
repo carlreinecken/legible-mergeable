@@ -1,6 +1,7 @@
 import * as util from './util.js'
+import { MERGEABLE_MARKER } from './constants.js'
 
-export function transformMergeables (dump, transformFn) {
+export function transformMergeable (dump, transformFn) {
   const result = {}
 
   for (const key in dump) {
@@ -10,18 +11,14 @@ export function transformMergeables (dump, transformFn) {
 
     const property = dump[key]
 
-    // TODO: add condition branch to check if key is MERGEABLE_MARKER
-    // an then skip it, because the setMergeablePrototype sets it shallow
-    // cloned by itself (which should be enough
-
     if (typeof property !== 'object') {
       result[key] = property
+    } else if (key === MERGEABLE_MARKER) {
+      continue
     } else if (util.hasMarker(property)) {
       result[key] = transformFn(property)
     } else {
       result[key] = util.deepCopy(property)
-      // TODO: is deep copy ok?
-      // result[key] = property
     }
   }
 
