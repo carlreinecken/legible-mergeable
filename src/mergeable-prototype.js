@@ -1,6 +1,5 @@
 import * as util from './util.js'
 import { MERGEABLE_MARKER } from './constants.js'
-import { createProxy } from './proxy.js'
 import { transformMergeable } from './transform-mergeable.js'
 
 export function setMergeablePrototype (dump) {
@@ -16,13 +15,6 @@ export function setMergeablePrototype (dump) {
 export const mergeablePrototype = {
   get __isMergeable () {
     return true
-  },
-
-  // TODO: i think it would be better if they call the createProxy function themself
-  // otherwise the user might be inclined to call this function a lot, which
-  // is not really good to create new proxies all the time, right?
-  get _proxy () {
-    return createProxy(this)
   },
 
   has (key) {
@@ -46,14 +38,14 @@ export const mergeablePrototype = {
   set (key, value, options) {
     options = options || {}
 
-    if (options.mergeable || util.hasMarker(value)) {
-      // value = createFromDump(value)
+    if (options.mergeable || (options.mergeable !== false && util.hasMarker(value))) {
+      value = setMergeablePrototype(value)
     }
 
     this[key] = value
     this[MERGEABLE_MARKER][key] = util.newDate(options.date)
 
-    return this[key]
+    return this
   },
 
   delete (key, options) {
@@ -62,13 +54,6 @@ export const mergeablePrototype = {
     delete this[key]
 
     this[MERGEABLE_MARKER][key] = util.newDate(options.date)
-  },
-
-  // TODO: do i really need this? or should they just get the proxy directly?
-  modify (callback, options) {
-    options = options || {}
-
-    callback(createProxy(this, options))
 
     return this
   },
@@ -79,12 +64,6 @@ export const mergeablePrototype = {
 
   size () {
     return Object.keys(this).length
-  },
-
-  // TODO: so its basically a shallow cloning of this..?
-  // TODO: without the marker please!
-  state () {
-    return { ...this }
   },
 
   /*

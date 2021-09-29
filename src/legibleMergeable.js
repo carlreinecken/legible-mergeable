@@ -2,10 +2,15 @@ import * as util from './util.js'
 import { MERGEABLE_MARKER } from './constants.js'
 import { mergeFunction } from './merge-function.js'
 import { setMergeablePrototype } from './mergeable-prototype.js'
+import { createProxy } from './proxy.js'
 
 export default {
   create (dump) {
     return setMergeablePrototype(dump || {})
+  },
+
+  createProxy (dump, options) {
+    return createProxy(dump, options)
   },
 
   merge (docA, docB) {
@@ -16,7 +21,11 @@ export default {
 
     const result = mergeFunction({ a: docA, b: docB })
 
-    return setMergeablePrototype(result)
+    if (docA.__isMergeable || docB.__isMergeable) {
+      return setMergeablePrototype(result)
+    }
+
+    return result
   },
 
   _mergeFunction: mergeFunction,
