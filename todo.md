@@ -1,33 +1,46 @@
-* more options: set date when calling create(), pass mod key into static funktions (is kept in instances)
+* remove prototype
 * lazy vmodel!
-* same()/compare() are mergeables the same?
-* static merge should handle raw dumps
-* cache nested proxies
+* mergeOrFail
+* after merge, the result would need to be turned into a proxy?
+* soft delete
+* manual order
 * NICE TO HAVE: research how to compress modification dates if there are extacly same of multiple properties
 * NICE TO HAVE: throw error if the new date in `set()` is before the previous mod date (relative to the wall clock) (but this could be wanted) OR throw error if dates in merging are in the past relative to wall clock (this would make the merge coupled with outside info tho)
 
-## compare
+## remove prototype
 
-to compare two states and check whether they diverged
+instead we switch completely to "helper" functions á `legibleMergeable.set(task, 'title', 'Some Title')`
 
-states can be the same but their modification dates can differ. so i need to hash both
+functions that are kept:
 
-i also need to know when a merge didnt/wont change anything
+* set
+* delete
+* refresh
+* merge
+* clone
+* createProxy -> proxify
+* map
+* filter
+* modifications
+* base
 
-* calculate on demand
-* calculate every time something changes
+map & filter should alwas return arrays. there is no use case for using these in some object
 
-```
-docA.compare(docB)
+functions that are not needed anymore:
 
-legibleMergeable.compare(docA, docB)
-```
+* get
+* has (?)
+* dump
 
-### use case: merging
+## mergeOrFail
 
-no need, instead:
-
-compare latest date of property (ignoring & overwriting nested changes)
+  try {
+    legibleMergeable.mergeOrFail(docA, docB)
+  } catch (error) {
+    if (error instanceof legibleMergeable.NOTHING_CHANGED_ERROR) {
+      // do stuff
+    }
+  }
 
 ### use case: detect change in formular to disable "save"
 
@@ -41,66 +54,58 @@ no need, modification dates don't matter
 * merge itself throws error if nothing was changed
 * before merge: deep comparison of all modification dates?
 
-## static merge should handle raw dumps
-
-so far i use a specialized dump { state, '^m' } for the merge. which is kinda stupid, because i only do that, to recognize a mergeable. and because the merge tests dont create a mergeable instance.
-
-the solution: offer support for instances *and* dumps 💁‍♀️ this would also enable the use of the merge function without ever needing the Mergeable Class
-
-```
-transferObject = { _state: {}, _modifications: {}, __isMergeable: true }
-
-dump = { ..., ^m: {} }
-
-dump <-> transferObject
-
-transferObject is a subset of Mergeable
-
-dump <-> internal
-
--------
-
-// so far
-dump > instance
-
-// dump > transferObject > instance
-// dump > transferObject > dump
-
-legibleMergeable.merge(instance, dump)
-legibleMergeable.merge(dump, dump)
-
-// returns dump (without needing to convert to an instance)
-forceDump, forceInstance?
-
-TODO: measure perfomance improvement not to create class
-console.time('t') consol
-
-```
-
 ## soft delete
 
-encourage "soft delete" in readme: use some flag to hide the item. the flag should be always refreshed. merging: the flag gets always compared to the latest modification date(?)
+encourage "soft delete" in readme: use some flag in your own object to hide the item. that way users can undo a delete and changes that were done after the "deletion" are still applied
 
 ## manual order
 
-should not be part of core. nevertheless i'm not sure if i should not at least offer some helper methods
+options which wouldn't need to alter the merge function:
 
-const list = legibleMergeable.fromArray([ d1, d2, { ^m: { 1: ..., 'order': date } } ], 'id' )
+1. ordered ids as own array in list as atomic value. What happens to added properties from other clients while someone else overwrites the order? this problem makes it basically impossible to make the order a single atomic value.
+2. keep the positions as nested mergeable in the list. which would make things really weird cause a key would be tracked twice; once as object property and once its position.
+3. put the position in the list element itself. the `id_key` would need to be saved inside the list anyway, it could also save a `position_key`, so the list knows where to look when ordering.
 
-list.dumpAsArray() or just dump()
+### option 1 (not possible)
 
-may this even be a case where i should extend Mergeable for smthng like MergeableArray
+    const list = legibleMergeable.fromList([
+      1,
+      2,
+      {
+        ^lm: { 1: ..., '^lm.order': date },
+        ^lm.order: [1, 2]
+      },
+    ], { objectKey: 'id' })
 
-then i could overwrite all the imprtant functions. include a `_order` property, which is just handled as primitive value and represents the order of the top level as an array of identifiers. reorder() just takes a list of ids in their represantative order and sets the modification date – which means ordering the list is one action
+gets transformed to
 
-```
-arrayToObject (array, customIndex) {
-return array.reduce((acc, value, i) => {
-  const key = customIndex == null ? i : customIndex
+    {
+      1,
+      2,
+      ^lm: { 1: ..., '^lm.order': date },
+      ^lm.order: [1, 2]
+    }
 
-  acc[value[key]] = value
+every key that starts with the MARKER will get merged (except the MARKER itself), but gets ignored when iterating with helper functions over the object
 
-  return acc
-}, {})
-}
-```
+new helper functions
+
+* order, shortcut to `.set(tasks, '^lm.order', val)`. if no value is given, it returns the already existing order property
+
+functions need to be extended
+
+* set, needs to push key into order
+* delete, needs to delete key from order
+* base, return an array sorted by order property
+
+---
+
+    arrayToObject (array, customIndex) {
+      return array.reduce((acc, value, i) => {
+        const key = customIndex == null ? i : customIndex
+
+        acc[value[key]] = value
+
+        return acc
+      }, {})
+    }

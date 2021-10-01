@@ -33,7 +33,7 @@ Anyway judge for yourself, I gather this is rather legible:
 ]
 ```
 
-A few points:
+A few notes:
 
 * This is a nested `Mergeable`. The root object here is used as unordered list.
 * In the real world where you have multiple clients that can add an object, you probably should use some form UUID (like nanoid) as id to prevent collisions.
