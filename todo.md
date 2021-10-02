@@ -1,36 +1,14 @@
-* remove prototype
-* lazy vmodel!
+* readme
 * mergeOrFail
-* after merge, the result would need to be turned into a proxy?
-* soft delete
 * manual order
 * NICE TO HAVE: research how to compress modification dates if there are extacly same of multiple properties
 * NICE TO HAVE: throw error if the new date in `set()` is before the previous mod date (relative to the wall clock) (but this could be wanted) OR throw error if dates in merging are in the past relative to wall clock (this would make the merge coupled with outside info tho)
 
-## remove prototype
+## readme
 
-instead we switch completely to "helper" functions á `legibleMergeable.set(task, 'title', 'Some Title')`
+lazy vmodel!
 
-functions that are kept:
-
-* set
-* delete
-* refresh
-* merge
-* clone
-* createProxy -> proxify
-* map
-* filter
-* modifications
-* base
-
-map & filter should alwas return arrays. there is no use case for using these in some object
-
-functions that are not needed anymore:
-
-* get
-* has (?)
-* dump
+soft delete: encourage "soft delete" in readme: use some flag in your own object to hide the item. that way users can undo a delete and changes that were done after the "deletion" are still applied
 
 ## mergeOrFail
 
@@ -54,17 +32,13 @@ no need, modification dates don't matter
 * merge itself throws error if nothing was changed
 * before merge: deep comparison of all modification dates?
 
-## soft delete
-
-encourage "soft delete" in readme: use some flag in your own object to hide the item. that way users can undo a delete and changes that were done after the "deletion" are still applied
-
 ## manual order
 
 options which wouldn't need to alter the merge function:
 
 1. ordered ids as own array in list as atomic value. What happens to added properties from other clients while someone else overwrites the order? this problem makes it basically impossible to make the order a single atomic value.
 2. keep the positions as nested mergeable in the list. which would make things really weird cause a key would be tracked twice; once as object property and once its position.
-3. put the position in the list element itself. the `id_key` would need to be saved inside the list anyway, it could also save a `position_key`, so the list knows where to look when ordering.
+3. put the position in the list element itself. the `id_key` would need to be saved inside the list anyway, it could also save a `position_key`, so the list knows where to look when ordering. user would need to use `insert` instead of `set` so a position is generated...
 
 ### option 1 (not possible)
 
