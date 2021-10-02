@@ -176,7 +176,7 @@
     // else: The property was deleted
   }
 
-  function mergeFunction ({ a: docA, b: docB, failIfSame }) {
+  function mergeFunction (docA, docB, throwErrorIfSame) {
     let docsHaveDifferences = false;
 
     const input = {
@@ -224,10 +224,7 @@
 
       // Call the merge function recursively if both properties are Mergeables
       if (isPropertyMergeable(input.a.state[key]) && isPropertyMergeable(input.b.state[key])) {
-        result[key] = mergeFunction({
-          a: input.a.state[key],
-          b: input.b.state[key]
-        });
+        result[key] = mergeFunction(input.a.state[key], input.b.state[key]);
 
         docsHaveDifferences = true;
 
@@ -241,7 +238,7 @@
       // else: The property was deleted on both sides
     }
 
-    if (failIfSame && docsHaveDifferences === false) {
+    if (throwErrorIfSame && docsHaveDifferences === false) {
       throw new Error(MERGE_HAD_NO_DIFFERENCES_ERROR)
     }
 
@@ -288,10 +285,12 @@
     MERGEABLE_MARKER,
     MERGE_HAD_NO_DIFFERENCES_ERROR,
 
-    merge (mergeableA, mergeableB, options) {
-      options = options || {};
+    merge (mergeableA, mergeableB) {
+      return mergeFunction(mergeableA, mergeableB)
+    },
 
-      return mergeFunction({ a: mergeableA, b: mergeableB, failIfSame: options.failIfSame })
+    mergeOrFail (mergeableA, mergeableB) {
+      return mergeFunction(mergeableA, mergeableB, true)
     },
 
     createProxy,

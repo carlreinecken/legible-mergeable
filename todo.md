@@ -1,36 +1,12 @@
 * readme
-* mergeOrFail
 * manual order
 * NICE TO HAVE: research how to compress modification dates if there are extacly same of multiple properties
-* NICE TO HAVE: throw error if the new date in `set()` is before the previous mod date (relative to the wall clock) (but this could be wanted) OR throw error if dates in merging are in the past relative to wall clock (this would make the merge coupled with outside info tho)
 
 ## readme
 
 lazy vmodel!
 
 soft delete: encourage "soft delete" in readme: use some flag in your own object to hide the item. that way users can undo a delete and changes that were done after the "deletion" are still applied
-
-## mergeOrFail
-
-  try {
-    legibleMergeable.mergeOrFail(docA, docB)
-  } catch (error) {
-    if (error instanceof legibleMergeable.NOTHING_CHANGED_ERROR) {
-      // do stuff
-    }
-  }
-
-### use case: detect change in formular to disable "save"
-
-no need, modification dates don't matter
-
-* compare stringified base()
-
-### use case: prevent upload ("will a merge change sonething?")
-
-* merge itself returns a boolean whether something was changed
-* merge itself throws error if nothing was changed
-* before merge: deep comparison of all modification dates?
 
 ## manual order
 

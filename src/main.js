@@ -7,10 +7,12 @@ export default {
   MERGEABLE_MARKER,
   MERGE_HAD_NO_DIFFERENCES_ERROR,
 
-  merge (mergeableA, mergeableB, options) {
-    options = options || {}
+  merge (mergeableA, mergeableB) {
+    return mergeFunction(mergeableA, mergeableB)
+  },
 
-    return mergeFunction({ a: mergeableA, b: mergeableB, failIfSame: options.failIfSame })
+  mergeOrFail (mergeableA, mergeableB) {
+    return mergeFunction(mergeableA, mergeableB, true)
   },
 
   createProxy,

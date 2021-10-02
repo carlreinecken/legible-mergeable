@@ -201,12 +201,23 @@
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+        <script src="dist/legible-mergeable.js"></script>
 
         <script type="module">
-import legibleMergeable from './src/legibleMergeable.js'
 const randomId = (length) => parseInt(Math.random().toString().slice(2, 2 + length)).toString(36)
 
 const app = new Vue({
+    /*
+    components: {
+      clients: {
+        components: {
+          task: {
+          }
+        }
+      },
+    },
+    */
+
     el: '#app',
 
     data: {

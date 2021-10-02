@@ -28,7 +28,7 @@ function setProperty (resultReference, state, key) {
   // else: The property was deleted
 }
 
-export function mergeFunction ({ a: docA, b: docB, failIfSame }) {
+export function mergeFunction (docA, docB, throwErrorIfSame) {
   let docsHaveDifferences = false
 
   const input = {
@@ -76,10 +76,7 @@ export function mergeFunction ({ a: docA, b: docB, failIfSame }) {
 
     // Call the merge function recursively if both properties are Mergeables
     if (isPropertyMergeable(input.a.state[key]) && isPropertyMergeable(input.b.state[key])) {
-      result[key] = mergeFunction({
-        a: input.a.state[key],
-        b: input.b.state[key]
-      })
+      result[key] = mergeFunction(input.a.state[key], input.b.state[key])
 
       docsHaveDifferences = true
 
@@ -93,7 +90,7 @@ export function mergeFunction ({ a: docA, b: docB, failIfSame }) {
     // else: The property was deleted on both sides
   }
 
-  if (failIfSame && docsHaveDifferences === false) {
+  if (throwErrorIfSame && docsHaveDifferences === false) {
     throw new Error(MERGE_HAD_NO_DIFFERENCES_ERROR)
   }
 

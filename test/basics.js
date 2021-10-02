@@ -146,8 +146,8 @@ describe('basics', function () {
 
       const replicaB = lm.clone(replicaA)
 
-      const doMerge1 = () => lm.merge(replicaA, replicaB, { failIfSame: true })
-      const doMerge2 = () => lm.merge(replicaB, replicaA, { failIfSame: true })
+      const doMerge1 = () => lm.mergeOrFail(replicaA, replicaB)
+      const doMerge2 = () => lm.mergeOrFail(replicaB, replicaA)
 
       expect(doMerge1).to.throw(lm.MERGE_HAD_NO_DIFFERENCES_ERROR)
       expect(doMerge2).to.throw(lm.MERGE_HAD_NO_DIFFERENCES_ERROR)
