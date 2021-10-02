@@ -6,6 +6,8 @@
 
   const MERGEABLE_MARKER = '^lm';
 
+  const MERGE_HAD_NO_DIFFERENCES_ERROR = 'MERGE_HAD_NO_DIFFERENCES_ERROR';
+
   function hasKey (object, key) {
     return Object.prototype.hasOwnProperty.call(object, key)
   }
@@ -174,7 +176,9 @@
     // else: The property was deleted
   }
 
-  function mergeFunction ({ a: docA, b: docB }) {
+  function mergeFunction ({ a: docA, b: docB, failIfSame }) {
+    let docsHaveDifferences = false;
+
     const input = {
       a: { state: stateWithoutMarker(docA), mods: docA[MERGEABLE_MARKER] || {} },
       b: { state: stateWithoutMarker(docB), mods: docB[MERGEABLE_MARKER] || {} }
@@ -198,6 +202,8 @@
         setProperty(result, input.a.state, key);
         setModification(result, input.a.mods, key);
 
+        docsHaveDifferences = true;
+
         continue
       }
 
@@ -205,6 +211,8 @@
       if (aChangedAt < bChangedAt) {
         setProperty(result, input.b.state, key);
         setModification(result, input.b.mods, key);
+
+        docsHaveDifferences = true;
 
         continue
       }
@@ -221,6 +229,8 @@
           b: input.b.state[key]
         });
 
+        docsHaveDifferences = true;
+
         continue
       }
 
@@ -228,7 +238,11 @@
       if (hasKey(input.a.state, key)) {
         result[key] = deepCopy(input.a.state[key]);
       }
-      // else: The property is deleted on both sides
+      // else: The property was deleted on both sides
+    }
+
+    if (failIfSame && docsHaveDifferences === false) {
+      throw new Error(MERGE_HAD_NO_DIFFERENCES_ERROR)
     }
 
     return result
@@ -270,20 +284,21 @@
     })
   }
 
-  var legibleMergeable = {
-    merge (mergeableA, mergeableB) {
-      return mergeFunction({ a: mergeableA, b: mergeableB })
-    },
-
+  var main = {
     MERGEABLE_MARKER,
+    MERGE_HAD_NO_DIFFERENCES_ERROR,
 
-    createProxy (mergeable, options) {
-      return createProxy(mergeable, options)
+    merge (mergeableA, mergeableB, options) {
+      options = options || {};
+
+      return mergeFunction({ a: mergeableA, b: mergeableB, failIfSame: options.failIfSame })
     },
+
+    createProxy,
 
     ...mergeableFunctions
   };
 
-  return legibleMergeable;
+  return main;
 
 })));
