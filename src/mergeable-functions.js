@@ -38,11 +38,17 @@ export function size (mergeable) {
 }
 
 export function base (mergeable) {
-  return transformMergeable(mergeable, property => base(property), true)
+  return transformMergeable(mergeable)
 }
 
 export function clone (mergeable) {
-  return transformMergeable(mergeable || {}, property => property, false)
+  const transformed = transformMergeable(mergeable || {}, property => clone(property))
+
+  if (util.hasKey(mergeable, MERGEABLE_MARKER)) {
+    transformed[MERGEABLE_MARKER] = { ...mergeable[MERGEABLE_MARKER] }
+  }
+
+  return transformed
 }
 
 export function filter (mergeable, callback) {

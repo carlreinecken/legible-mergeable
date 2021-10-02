@@ -330,6 +330,36 @@ describe('api', function () {
       expect(task.subtasks[4][MARKER]).to.eql({ done: date })
     })
 
+    it('base', function () {
+      const original = {
+        id: 1,
+        name: 'Milk',
+        price: 90,
+        [MARKER]: { name: '2021-02-02', price: '2021-05-05' }
+      }
+
+      const proxy = legibleMergeable.createProxy(original)
+      const based = legibleMergeable.base(proxy)
+
+      delete original[MARKER]
+
+      expect(based).to.be.eql(original)
+    })
+
+    it('clone', function () {
+      const original = {
+        id: 1,
+        name: 'Milk',
+        price: 90,
+        [MARKER]: { name: '2021-02-02', price: '2021-05-05' }
+      }
+
+      const proxy = legibleMergeable.createProxy(original)
+      const cloned = legibleMergeable.clone(proxy)
+
+      expect(cloned).to.be.eql(original)
+    })
+
     it('merge', function () {
       const docA = {
         id: 1,
@@ -342,7 +372,8 @@ describe('api', function () {
         id: 1,
         name: 'Oatmilk',
         price: 140,
-        [MARKER]: { name: '2021-09-30' }
+        ingredients: { oats: 5, [MARKER]: { oats: '2021-10-02' } },
+        [MARKER]: { name: '2021-09-30', ingredients: '2021-10-02' }
       })
 
       const merged1 = legibleMergeable.merge(docA, docB)
@@ -352,7 +383,8 @@ describe('api', function () {
         id: 1,
         name: 'Oatmilk',
         price: 90,
-        [MARKER]: { name: '2021-09-30', price: '2021-05-05' }
+        ingredients: { oats: 5, [MARKER]: { oats: '2021-10-02' } },
+        [MARKER]: { name: '2021-09-30', price: '2021-05-05', ingredients: '2021-10-02' }
       }
 
       expect(merged1).to.eql(merged2)

@@ -4,7 +4,7 @@ import { transformMergeable } from './transform-mergeable.js'
 import * as mergeableFunctions from './mergeable-functions.js'
 
 export function createProxy (dump, options) {
-  const result = transformMergeable(dump, (item) => createProxy(item, options), false)
+  const result = transformMergeable(dump, (item) => createProxy(item, options))
 
   result[MERGEABLE_MARKER] = { ...dump[MERGEABLE_MARKER] } || {}
 

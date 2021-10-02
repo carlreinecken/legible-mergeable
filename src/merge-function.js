@@ -1,5 +1,6 @@
 import * as util from './util.js'
 import { MERGEABLE_MARKER as MARKER } from './constants.js'
+import { clone as cloneMergeable } from './mergeable-functions.js'
 
 function isPropertyMergeable (property) {
   return util.isObject(property) && util.hasMarker(property)
@@ -10,6 +11,21 @@ function stateWithoutMarker (state) {
   delete result[MARKER]
 
   return result
+}
+
+function setModification (resultReference, mods, key) {
+  resultReference[MARKER][key] = mods[key]
+}
+
+function setProperty (resultReference, state, key) {
+  if (util.hasKey(state, key)) {
+    if (isPropertyMergeable(state[key])) {
+      resultReference[key] = cloneMergeable(state[key])
+    } else {
+      resultReference[key] = util.deepCopy(state[key])
+    }
+  }
+  // else: The property was deleted
 }
 
 export function mergeFunction ({ a: docA, b: docB }) {
@@ -33,34 +49,23 @@ export function mergeFunction ({ a: docA, b: docB }) {
 
     // The property in A is newer
     if (aChangedAt > bChangedAt) {
-      // if: a and b are Mergeables, they should be merged
-      // else if: one property is a Mergeable:
-      //   - if A (later) is the Mergeable, just take that
-      //   - if B (earlier) is the Mergeable, i would need to recursively check
-      //     whether the Mergeable has a later date anywhere in its nested props
-      if (util.hasKey(input.a.state, key)) {
-        result[key] = util.deepCopy(input.a.state[key])
-      } // else: The property was deleted
-
-      result[MARKER][key] = input.a.mods[key]
+      setProperty(result, input.a.state, key)
+      setModification(result, input.a.mods, key)
 
       continue
     }
 
     // The property in B is newer
     if (aChangedAt < bChangedAt) {
-      if (util.hasKey(input.b.state, key)) {
-        result[key] = util.deepCopy(input.b.state[key])
-      }
-
-      result[MARKER][key] = input.b.mods[key]
+      setProperty(result, input.b.state, key)
+      setModification(result, input.b.mods, key)
 
       continue
     }
 
     // The modification date is on both sides the same
     if (util.hasKey(input.a.mods, key)) {
-      result[MARKER][key] = input.a.mods[key]
+      setModification(result, input.a.mods, key)
     }
 
     // Call the merge function recursively if both properties are Mergeables
@@ -77,6 +82,7 @@ export function mergeFunction ({ a: docA, b: docB }) {
     if (util.hasKey(input.a.state, key)) {
       result[key] = util.deepCopy(input.a.state[key])
     }
+    // else: The property is deleted on both sides
   }
 
   return result
