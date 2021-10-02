@@ -256,7 +256,7 @@
   function getProxy (mergeable, options) {
     return new Proxy(mergeable, {
       set (target, key, value, receiver) {
-        if (value && hasMarker(value)) {
+        if (value && isObject(value) && hasMarker(value)) {
           value = createProxy(value, options);
         }
 

@@ -1,12 +1,10 @@
-* readme
+* soft delete
 * manual order
 * NICE TO HAVE: research how to compress modification dates if there are extacly same of multiple properties
 
-## readme
+## soft delete
 
-lazy vmodel!
-
-soft delete: encourage "soft delete" in readme: use some flag in your own object to hide the item. that way users can undo a delete and changes that were done after the "deletion" are still applied
+encourage "soft delete" in readme: use some flag in your own object to hide the item. that way users can undo a delete and changes that were done after the "deletion" are still applied
 
 ## manual order
 

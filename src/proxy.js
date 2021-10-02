@@ -14,7 +14,7 @@ export function createProxy (dump, options) {
 function getProxy (mergeable, options) {
   return new Proxy(mergeable, {
     set (target, key, value, receiver) {
-      if (value && util.hasMarker(value)) {
+      if (value && util.isObject(value) && util.hasMarker(value)) {
         value = createProxy(value, options)
       }
 
