@@ -1,39 +1,29 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable no-unused-expressions */
+
 import chai from 'chai'
 import legibleMergeable from '../src/legibleMergeable.js'
-import * as util from '../src/util.js'
 
+const lm = legibleMergeable
 const { expect } = chai
 const MARKER = legibleMergeable.MERGEABLE_MARKER
 const newDate = date => (new Date(date)).toISOString()
 
-/* eslint-disable no-unused-vars */
-/* eslint-disable no-unused-expressions */
-
 describe('api', function () {
-  describe('create', function () {
-    it('an empty object', function () {
-      const item = legibleMergeable.create()
-
-      expect(item.base()).to.eql({})
-      expect(item.dump()).to.eql({ [MARKER]: {} })
-    })
-
-    it('a mergeable object', function () {
-      const base = {
+  describe('get base', function () {
+    it('of an object', function () {
+      const item = {
         id: 1,
         name: 'Oatmilk',
         price: 140
       }
 
-      const item = legibleMergeable.create(base)
+      const base = { ...item }
 
-      expect(item.base()).to.eql(base)
-
-      base[MARKER] = {}
-      expect(item.dump()).to.eql(base)
+      expect(lm.base(item)).to.eql(base)
     })
 
-    it('a mergeable object with changes', function () {
+    it('of an object with modification marker', function () {
       const original = {
         id: 1,
         name: 'Oatmilk',
@@ -43,42 +33,39 @@ describe('api', function () {
         }
       }
 
-      const item = legibleMergeable.create(original)
-      expect(item.dump()).to.eql(original)
+      const expectedBase = { ...original }
+      delete expectedBase[MARKER]
 
-      delete original[MARKER]
-      expect(item.base()).to.eql(original)
+      const base = lm.base(original)
+
+      expect(base).to.eql(expectedBase)
+      expect(base[MARKER]).to.be.undefined
+      expect(lm.modifications(original)).to.eql(original[MARKER])
     })
   })
 
   describe('manipulate', function () {
-    it('a mergeable object', function () {
-      const date = newDate(new Date())
-      const item = legibleMergeable.create({
+    it('an unmodified object', function () {
+      const date = newDate('2021-10-01')
+
+      const item = {
         id: 1,
         name: 'Oatmilk',
         price: 140
-      })
+      }
 
-      item.set('price', 135, { date })
-      item.set('isOpen', false, { date })
-
-      const dump = item.dump()
-      const changes = dump[MARKER]
-      delete dump[MARKER]
+      lm.set(item, 'price', 135, { date })
+      lm.set(item, 'isOpen', false, { date })
 
       const expected = {
         id: 1,
         name: 'Oatmilk',
         price: 135,
-        isOpen: false
+        isOpen: false,
+        [MARKER]: { price: date, isOpen: date }
       }
 
-      expect(dump).to.eql(expected)
-      expect(changes.isOpen).to.equal(date)
-      expect(changes.price).to.equal(date)
-      expect(changes.name).to.be.undefined
-      expect(changes.id).to.be.undefined
+      expect(item).to.eql(expected)
     })
 
     it('a mergeable object with the proxy via the use getter', function () {
@@ -108,7 +95,8 @@ describe('api', function () {
 
     it('a mergeable object with changes', function () {
       const date = newDate('2020-09-06')
-      const original = {
+
+      const item = {
         id: 1,
         name: 'Oatmilk',
         price: 240,
@@ -119,39 +107,29 @@ describe('api', function () {
           price: newDate('2020-09-01')
         }
       }
-      const item = legibleMergeable.create(original)
 
-      if (item.get('price') > 200) {
-        item.set('name', 'Almondmilk', { date })
-        item.delete('isOpen', { date })
-      }
-      if (!item.has('isOpen')) {
-        item.set('isCold', true, { date })
+      if (item.price > 200) {
+        lm.set(item, 'name', 'Almondmilk', { date })
+        lm.drop(item, 'isOpen', { date })
       }
 
-      const dump = item.dump()
-      const changes = dump[MARKER]
-      delete dump[MARKER]
+      lm.set(item, 'isCold', !item.isOpen, { date })
 
       const expected = {
         id: 1,
         name: 'Almondmilk',
         price: 240,
-        isCold: true
+        isCold: true,
+        [MARKER]: { price: newDate('2020-09-01'), name: date, isOpen: date, isCold: date }
       }
 
-      expect(dump).to.eql(expected)
-      expect(changes.name).to.equal(date)
-      expect(changes.isCold).to.equal(date)
-      expect(changes.isOpen).to.equal(date)
-      expect(changes.price).to.equal(newDate('2020-09-01'))
-      expect(changes.id).to.be.undefined
+      expect(item).to.eql(expected)
     })
   })
 
   describe('merge', function () {
     it('a cloned and changed object', function () {
-      const replicaA = legibleMergeable.create({
+      const replicaA = {
         name: 'Oatmilk',
         price: 120,
         isCold: true,
@@ -160,35 +138,29 @@ describe('api', function () {
           name: '2020-08-03',
           isCold: '2020-08-05'
         }
-      })
+      }
 
-      const replicaB = replicaA.clone()
+      const replicaB = lm.clone(replicaA)
+
       const date = newDate('2020-08-04')
-      replicaB.set('name', 'Almondmilk', { date })
-      replicaB.set('isCold', false, { date })
-      replicaB.delete('price', { date })
 
-      const replicaC1 = legibleMergeable.merge(replicaA, replicaB)
-      const replicaC2 = legibleMergeable.merge(replicaB, replicaA)
+      lm.set(replicaB, 'name', 'Almondmilk', { date })
+      lm.set(replicaB, 'isCold', false, { date })
+      lm.drop(replicaB, 'price', { date })
 
-      const dump = replicaC1.dump()
-      const changes = dump[MARKER]
-      delete dump[MARKER]
+      const replicaC1 = lm.merge(replicaA, replicaB)
+      const replicaC2 = lm.merge(replicaB, replicaA)
 
       const expected = {
         name: 'Almondmilk',
         isCold: true,
-        isOpen: false
+        isOpen: false,
+        [MARKER]: { name: date, price: date, isCold: '2020-08-05' }
       }
 
-      expect(replicaC1.base()).to.eql(replicaC2.base())
-      expect(dump).to.eql(expected)
-      expect(replicaA.size()).to.equal(4)
-      expect(replicaB.size()).to.equal(3)
-      expect(changes.name).to.equal(date)
-      expect(changes.price).to.equal(date)
-      expect(changes.isCold).to.equal('2020-08-05')
-      expect(changes.isOpen).to.be.undefined
+      expect(replicaA).to.not.eql(replicaB)
+      expect(replicaC1).to.eql(replicaC2)
+      expect(replicaC1).to.eql(expected)
     })
   })
 
@@ -207,30 +179,20 @@ describe('api', function () {
       noMergeable: { uid: 'bar', age: 21 }
     })
 
-    it('get nested objects', function () {
-      const item = legibleMergeable.create(getSample())
-
-      expect(item.get(7).__isMergeable).to.be.true
-      expect(item.get('foo').__isMergeable).to.be.true
-      expect(item.get('foo').get('nested').__isMergeable).to.be.true
-      expect(item.get('noMergeable').__isMergeable).to.be.undefined
-    })
-
     it('change properties of nested objects', function () {
-      const item = legibleMergeable.create(getSample())
+      const item = getSample()
 
-      item.get(7).delete('name')
-      item.get('foo').set('age', 10)
-      item.get('foo').get('nested').set('age', 44)
+      lm.drop(item[7], 'name')
+      lm.set(item.foo, 'age', 10)
+      lm.set(item.foo.nested, 'age', 44)
 
-      expect(item.get(7).get('name')).to.be.undefined
-      expect(item.get('foo').get('age')).to.be.eql(10)
-      expect(item.get('foo').get('nested').get('age')).to.be.eql(44)
+      expect(item[7].name).to.be.undefined
+      expect(item.foo.age).to.be.eql(10)
+      expect(item.foo.nested.age).to.be.eql(44)
     })
 
     it('get base', function () {
-      const raw = getSample()
-      const item = legibleMergeable.create(raw)
+      const item = getSample()
 
       const expectedBase = {
         7: { uid: 7, name: 'gustav' },
@@ -238,30 +200,19 @@ describe('api', function () {
         noMergeable: { uid: 'bar', age: 21 }
       }
 
-      expect(item.base()).to.eql(expectedBase).but.to.not.equal(expectedBase)
-    })
-
-    it('get base and dump', function () {
-      const raw = getSample()
-      const item = legibleMergeable.create(raw)
-
-      const expectedDump = raw
-      expectedDump[MARKER] = {}
-
-      expect(item.dump()).to.eql(expectedDump).but.to.not.equal(expectedDump)
+      expect(lm.base(item)).to.eql(expectedBase)
     })
 
     it('clone', function () {
-      const item = legibleMergeable.create(getSample())
+      const item = getSample()
 
-      const itemClone = item.clone().dump()
+      const itemClone = lm.clone(item)
 
-      expect(item.dump()).to.eql(itemClone)
-      expect(item.dump()).to.eql(itemClone).but.to.not.equal(itemClone)
+      expect(item).to.eql(itemClone).but.to.not.equal(itemClone)
     })
 
     it('merge', function () {
-      const replicaOriginal = legibleMergeable.create({
+      const replicaOriginal = {
         1: {
           name: 'Thriller', price: 9.99, authors: ['Peter'], [MARKER]: { name: '2021-08-03', price: '2021-08-01' }
         },
@@ -276,23 +227,21 @@ describe('api', function () {
 
         noMergePlease: { name: 'Not mergeable' },
         [MARKER]: { 1: '2021-08-01' }
-      })
+      }
 
-      const replicaClone = replicaOriginal.clone()
+      const replicaClone = lm.clone(replicaOriginal)
       const date = '2021-08-10'
 
-      replicaClone.get(2).set('authors', ['Bob'], { date })
-      replicaClone.delete(2, { date })
-      replicaClone.get(1).set('name', 'Scifi', { date })
+      lm.set(replicaClone[2], 'authors', ['Bob'], { date })
+      lm.drop(replicaClone, 2, { date })
+      lm.set(replicaClone[1], 'name', 'Scifi', { date })
 
-      replicaClone.get(3).set('price', replicaClone.get(3).get('price') * 0.9, { date })
-      replicaClone.get(3).set('authors', [...replicaClone.get(3).get('authors'), 'Daisy'], { date })
-      replicaClone.get('3').delete('name', { date })
+      lm.set(replicaClone[3], 'price', replicaClone[3].price * 0.9, { date })
+      lm.set(replicaClone[3], 'authors', [...replicaClone[3].authors, 'Daisy'], { date })
+      lm.drop(replicaClone[3], 'name', { date })
 
       const replicaResultA = legibleMergeable.merge(replicaOriginal, replicaClone)
       const replicaResultB = legibleMergeable.merge(replicaClone, replicaOriginal)
-
-      const dump = replicaResultA.dump()
 
       const expected = {
         1: {
@@ -307,27 +256,29 @@ describe('api', function () {
         [MARKER]: { 1: '2021-08-01', 2: date }
       }
 
+      expect(replicaOriginal).to.not.eql(replicaClone)
       expect(replicaResultA).to.eql(replicaResultB)
-      expect(dump).to.eql(expected)
+      expect(replicaResultA).to.eql(expected)
     })
   })
 
   describe('proxy', function () {
     it('manipulate', function () {
       const date = '2021-09-07'
-      const task = legibleMergeable.createProxy({
+      const task = lm.createProxy({
         title: 'Life Support',
         done: false,
         daysUntilWeekend: ['Friday'],
         foo: {},
-        subtasks: legibleMergeable.create({
-          1: legibleMergeable.create({ title: 'Shower', done: false }),
+        subtasks: {
+          1: lm.touch({ title: 'Shower', done: false }),
           eat: { title: 'Eat', done: false, ingredients: ['Pasta'] },
-          3: { title: 'Sleep', done: false }
-        })
+          3: { title: 'Sleep', done: false, [MARKER]: {} },
+          [MARKER]: {}
+        }
       }, { date })
 
-      task.subtasks[4] = { title: 'Code', [MARKER]: {} }
+      task.subtasks[4] = lm.touch({ title: 'Code' })
       task.subtasks[1].title = task.subtasks[1].title + '!'
 
       for (const id in task.subtasks) {
@@ -372,7 +323,7 @@ describe('api', function () {
         }
       }
 
-      expect(util.deepCopy(task)).to.eql(expected)
+      expect(task).to.eql(expected)
       expect(task[MARKER]).to.eql({ done: date, foo: date })
       expect(task.subtasks[MARKER]).to.eql({ 3: date, 4: date })
       expect(task.subtasks[1][MARKER]).to.eql({ done: date, title: date })
@@ -409,56 +360,39 @@ describe('api', function () {
     })
   })
 
-  describe('compare', function () {
-    // TODO
-    xit('same docs', function () {
-    })
-
-    xit('with a doc that has one changed property', function () {
-    })
-
-    xit('with a doc that has one added property', function () {
-    })
-
-    it('whatsup with nested')
-  })
-
   describe('array like functions', function () {
     it('filter simple state', function () {
-      const doc = legibleMergeable.create({ 0: 'Abc', 1: 'df', 2: 'g', 3: '' })
+      const elements = { 0: 'Abc', 1: 'df', 2: 'g', 3: '' }
 
-      const filteredByStringLength = doc.filter(item => item.length > 1)
-      const filteredById = doc.filter((_, key) => key > 1)
+      const filteredByStringLength = lm.filter(elements, item => item.length > 1)
+      const filteredById = lm.filter(elements, (_, key) => key > 1)
 
-      expect(filteredByStringLength).to.be.eql({ 0: 'Abc', 1: 'df' })
-      expect(filteredById).to.be.eql({ 2: 'g', 3: '' })
+      expect(filteredByStringLength).to.be.eql(['Abc', 'df'])
+      expect(filteredById).to.be.eql(['g', ''])
     })
 
     it('filter nested', function () {
-      const doc = legibleMergeable.create()
+      const list = { 100: { age: 12 } }
 
-      doc.set(100, { age: 12 })
-      doc.set(101, { age: 23 })
+      lm.set(list, 101, { age: 23 })
+      lm.set(list, 102, { age: 72 })
 
-      const item102 = legibleMergeable.create({ age: 72 })
-      doc.set(102, item102)
+      const filtered = lm.filter(list, item => item.age % 3 === 0)
 
-      const filtered = doc.filter(item => item.age % 3 === 0)
-
-      expect(filtered).to.be.eql({ 100: { age: 12 }, 102: item102 })
+      expect(filtered).to.be.eql([{ age: 12 }, { age: 72 }])
     })
 
     it('filter by modification date')
 
     it('map nested', function () {
-      const doc = legibleMergeable.create({
+      const list = {
         hqm: { base: 2, multiplier: 3, [MARKER]: {} },
         owz: { base: -56, multiplier: 0.9, [MARKER]: {} },
         vpt: { base: 7, multiplier: 21, [MARKER]: {} },
         hox: { base: 24, multiplier: 2 }
-      })
+      }
 
-      const mapped = doc.map(item => item.base * item.multiplier)
+      const mapped = lm.map(list, item => item.base * item.multiplier)
 
       expect(mapped).to.be.eql([6, -50.4, 147, 48])
     })

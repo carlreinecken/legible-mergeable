@@ -13,10 +13,6 @@ export function deepCopy (value) {
   return JSON.parse(JSON.stringify(value))
 }
 
-export function newDate (date) {
-  return date || (new Date()).toISOString()
-}
-
 export function uniquenizeArray (array) {
   return [...new Set(array)]
 }

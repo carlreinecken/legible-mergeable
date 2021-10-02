@@ -1,7 +1,7 @@
 import * as util from './util.js'
 import { MERGEABLE_MARKER } from './constants.js'
 
-export function transformMergeable (dump, transformFn) {
+export function transformMergeable (dump, transformFn, ignoreMarker) {
   const result = {}
 
   for (const key in dump) {
@@ -13,7 +13,7 @@ export function transformMergeable (dump, transformFn) {
 
     if (typeof property !== 'object') {
       result[key] = property
-    } else if (key === MERGEABLE_MARKER) {
+    } else if (ignoreMarker && key === MERGEABLE_MARKER) {
       continue
     } else if (util.hasMarker(property)) {
       result[key] = transformFn(property)

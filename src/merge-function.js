@@ -14,8 +14,8 @@ function stateWithoutMarker (state) {
 
 export function mergeFunction ({ a: docA, b: docB }) {
   const input = {
-    a: { state: stateWithoutMarker(docA), mods: docA[MARKER] },
-    b: { state: stateWithoutMarker(docB), mods: docB[MARKER] }
+    a: { state: stateWithoutMarker(docA), mods: docA[MARKER] || {} },
+    b: { state: stateWithoutMarker(docB), mods: docB[MARKER] || {} }
   }
 
   const result = { [MARKER]: {} }
