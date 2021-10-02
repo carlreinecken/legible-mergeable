@@ -1,28 +1,22 @@
-function hasKey (object, key) {
+import { MERGEABLE_MARKER } from './constants.js'
+
+export function hasKey (object, key) {
   return Object.prototype.hasOwnProperty.call(object, key)
 }
 
-function deepCopy (value) {
-  // TODO: replace with something better performing.
-  //       makes following util function parseChangeDates obsolete.
+export function isObject (object) {
+  return Object.prototype.toString.call(object) === '[object Object]'
+}
+
+export function deepCopy (value) {
+  // TODO: replace with something better performing. be sure to compare perfomance
   return JSON.parse(JSON.stringify(value))
 }
 
-function parseChangeDates (changes) {
-  const result = {}
-  for (const [key, value] of Object.entries(changes)) {
-    result[key] = new Date(value)
-  }
-  return result
+export function uniquenizeArray (array) {
+  return [...new Set(array)]
 }
 
-function newDate (date) {
-  return date ? new Date(date) : new Date()
-}
-
-export default {
-  hasKey,
-  deepCopy,
-  parseChangeDates,
-  newDate
+export function hasMarker (property) {
+  return hasKey(property, MERGEABLE_MARKER) && isObject(property[MERGEABLE_MARKER])
 }

@@ -9,21 +9,54 @@
                 font-family: sans-serif;
             }
 
+            button {
+                background-color: #f0f0f0;
+                border: 1px solid #f0f0f0;
+                border-radius: 5px;
+                padding: 0.5em;
+                cursor: pointer;
+            }
+
+            input {
+                border-radius: 5px;
+                border: 1px solid #a4a4a4;
+                padding: 0.5em;
+            }
+
+            .modifications {
+                font-size: 0.7em;
+                white-space: pre;
+                display: block;
+            }
+
             .clients {
                 display: flex;
                 flex-wrap: wrap;
             }
 
             .client {
-                border: 1px solid #bbb;
+                border: 3px solid #bbb;
                 width: 300px;
                 min-height: 400px;
-                padding: 10px;
                 margin-right: 10px;
                 margin-bottom: 10px;
+                position: relative;
+                display: flex;
+                flex-wrap: wrap;
             }
 
-            .client > .newItem {
+            .client > div {
+                width: 100%;
+                padding: 10px;
+            }
+
+            .client > .modifications {
+                width: 100%;
+                background-color: #bbb;
+                padding: 10px;
+            }
+
+            .client .newItemInput {
                 padding: 10px 0;
                 display: flex;
                 justify-content: space-between;
@@ -32,15 +65,15 @@
             .client .item {
                 display: flex;
                 justify-content: space-between;
-                margin-bottom: 5px;
+                margin: 10px 0 5px;
             }
 
             .item > .item-done {
                 margin: 0;
             }
 
-            .item > .item-delete {
-                padding: 0;
+            .sendMode > .client.sendingSource {
+                border: 3px dashed #305688;
             }
 
             .sendMode > .client input,
@@ -49,10 +82,37 @@
                 opacity: 0.5;
             }
 
+            .sendMode > .client {
+                color: #627998;
+            }
+
+            .sendMode > .client:hover:not(.sendingSource) {
+                border-color: #93c2ff;
+            }
+
             .sendMode > .client:hover {
                 cursor: pointer;
                 background-color: #93c2ff;
-                border-color: #93c2ff;
+            }
+
+            .sendMode > .client > .modifications {
+                background-color: transparent;
+            }
+
+            .client > .actionText {
+                display: none;
+                position: absolute;
+                text-align: center;
+                bottom: -18px;
+                width: 100%;
+                z-index: 2;
+                background-color: #305688;
+                padding: 10px 0;
+                color: #fff;
+            }
+
+            .sendMode > .client:hover > .actionText {
+                display: block;
             }
 
             header {
@@ -60,111 +120,154 @@
                 justify-content: space-between;
             }
 
-            .stopSendMode {
-                display: block;
+            .activeStopSendButton {
+                background-color: #305688;
+                color: #fff;
             }
         </style>
     </head>
 
     <body>
         <div id="app">
+            <label style="margin-right: 30px">
+                <input type="checkbox" v-model="showModifications" />
+                Show Modifications
+            </label>
+
             <button :disabled="sendFrom == null"
                     @click="stopSendMode()"
-                    class=".stopSendMode">
+                    :class="{ activeStopSendButton: sendFrom != null }">
                 Stop Sending
             </button>
 
+            <!-- <button @click="init">Init</button> -->
+
             <br /><br />
 
-            <div class="clients" :class="{sendMode: sendFrom != null}">
+            <div class="clients" :key="change" :class="{ sendMode: sendFrom != null }">
                 <div v-for="(client, clientIndex) in clients"
                      :key="client.name"
                      class="client"
+                     :class="{ sendingSource: sendFrom == clientIndex }"
                      @click="sendToClient(clientIndex)">
-                    <header>
-                        <h3 style="margin: 0">{{ client.name }}</h3>
-                        <div>
-                            <button @click="cloneClient(clientIndex)">Clone</button>
-                            <button @click.stop="startSendMode(clientIndex)">Send</button>
-                        </div>
-                    </header>
+                    <div>
+                        <header>
+                            <h3 style="margin: 0; font-size: 1.6em;">{{ client.name }}</h3>
+                            <div>
+                                <button @click="cloneClient(clientIndex)">Clone</button>
+                                <button @click.stop="startSendMode(clientIndex)">Send</button>
+                            </div>
+                        </header>
 
-                    <div class="newItem">
-                        <input v-model="client.newItem"
-                               @keyup.enter="addItem(clientIndex)" />
-                        <button @click="addItem(clientIndex)">Add</button>
+                        <div class="newItemInput">
+                            <input v-model="client.newItemInput"
+                                   placeholder="New Item"
+                                   @keyup.enter="addItem(clientIndex)" />
+                            <button @click="addItem(clientIndex)">Add</button>
+                        </div>
+
+                        <div
+                             v-for="item in client.list"
+                             :key="client.name + item.id"
+                             :title="'Id: ' + item.id">
+                            <div class="item">
+                                <input type="checkbox"
+                                       class="item-done"
+                                       v-model="item.done" />
+
+                                <div>
+                                    <!-- the proxy is only completely reactive when the list item -->
+                                    <!-- existed already in the list it was cloned from -->
+                                    <input type="text" v-model.lazy="item.title" />
+                                    <!-- <input type="text" -->
+                                    <!--        :value="item.title" -->
+                                    <!--        @input="item.title = $event.target.value" /> -->
+                                </div>
+
+                                <button class="item-delete"
+                                        @click="deleteItem(clientIndex, item.id)">
+                                    X
+                                </button>
+                            </div>
+
+                            <code v-show="showModifications" class="modifications">{{ item.id }}: {{ lm.modifications(item) }}</code>
+                        </div>
                     </div>
 
-                    <draggable :value="client.list.state()" @sort="(change) => onSort(clientIndex, change)">
-                        <div class="item"
-                             v-for="item in client.list.state()"
-                             :key="client.name + item.id()"
-                             :title="item.id()">
-                            <input type="checkbox"
-                                   class="item-done"
-                                   :checked="item.get('done')"
-                                   @change="item.set('done', $event.target.checked)" />
-
-                            <input type="text"
-                                   :value="item.get('title')"
-                                   @input="item.set('title', $event.target.value)" />
-                            <button class="item-delete"
-                                    @click="deleteItem(clientIndex, item.id())">
-                                X
-                            </button>
-                        </div>
-                    </draggable>
+                    <h3 class="actionText">Send {{ clients[sendFrom]?.name }} here!</h3>
+                    <code v-show="showModifications" class="modifications">{{ lm.modifications(client.list) }}</code>
                 </div>
             </div>
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.8.4/Sortable.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/Vue.Draggable/2.20.0/vuedraggable.umd.min.js"></script>
         <script src="dist/legible-mergeable.js"></script>
 
-        <script>
+        <script type="module">
+const randomId = (length) => parseInt(Math.random().toString().slice(2, 2 + length)).toString(36)
+
 const app = new Vue({
+    /*
+    components: {
+      clients: {
+        components: {
+          task: {
+          }
+        }
+      },
+    },
+    */
+
     el: '#app',
+
     data: {
         sendFrom: null,
         clients: [],
-        names: ['Alice', 'Bob', 'Carol', 'Dave', 'Eric', 'Florence']
+        names: ['Alice', 'Bob', 'Carol', 'Dave', 'Eric', 'Florence'],
+        change: 0,
+        showModifications: false
     },
 
-    mounted () {
-        this.addClient()
+    async mounted () {
+        this.init()
+    },
 
-        const index = 0
-        this.clients[index].newItem = 'Change Lightbulb'
-        this.addItem(index)
-        this.clients[index].newItem = 'Cook spicy meal'
-        this.addItem(index)
+    computed: {
+        lm () {
+          return legibleMergeable
+        }
     },
 
     methods: {
-        onSort(clientIndex, change) {
-            const base = this.clients[clientIndex].list.base()
-            const id = base[change.oldIndex].id
-            const k = (change.oldIndex > change.newIndex) ? change.newIndex - 1 : change.newIndex
-            const afterId = k === -1 ? null : base[k].id
+        async init () {
+            this.addClient(legibleMergeable.touch({}))
 
-            this.clients[clientIndex].list.move(id, afterId)
-            console.log('sorted, new position:', this.clients[clientIndex].list.meta()['^p'][id])
+            const index = 0
+            this.clients[index].newItemInput = 'Change Lightbulb'
+            this.addItem(index)
+            this.clients[index].newItemInput = 'Cook spicy meal'
+            this.addItem(index)
+
+            // only this makes the first client reactive..?
+            this.startSendMode(index)
+            this.sendToClient(0)
+            this.stopSendMode()
         },
 
         addClient (list) {
             const name = (this.names.length > 0) ? this.names.shift() : prompt('Client Name')
+
             if (!name) return
+
             this.clients.push({
-                name,
-                newItem: '',
-                list: list || legibleMergeable.Array()
+              name,
+              newItemInput: '',
+              list: legibleMergeable.createProxy(list)
             })
         },
 
         cloneClient (clientIndex) {
-            this.addClient(this.clients[clientIndex].list.clone())
+            this.addClient(legibleMergeable.clone(this.clients[clientIndex].list))
         },
 
         stopSendMode () {
@@ -177,21 +280,40 @@ const app = new Vue({
 
         sendToClient (clientIndex) {
             if (this.sendFrom == null) return
-            this.clients[clientIndex].list.merge(this.clients[this.sendFrom].list)
+
+            const merged = legibleMergeable.merge(
+                this.clients[clientIndex].list,
+                this.clients[this.sendFrom].list
+            )
+
+
+            this.clients[clientIndex].list = legibleMergeable.createProxy(merged)
+
+            //this.change++
         },
 
         addItem (clientIndex) {
-            const randomId = (length) => parseInt(Math.random().toString().slice(2, 2 + length)).toString(36)
-            this.clients[clientIndex].list.push({
-                id: randomId(5),
+            const id = randomId(10)
+
+            // the mergeable proxy gets only be fully reactive if the new item
+            // is registered to the Vue reactivity system
+            const item = Vue.observable(legibleMergeable.touch({
+                id,
                 done: false,
-                title: this.clients[clientIndex].newItem
-            })
-            this.clients[clientIndex].newItem = ''
+                title: this.clients[clientIndex].newItemInput
+            }))
+
+            this.clients[clientIndex].list[id] = item
+            this.clients[clientIndex].newItemInput = ''
+
+            this.change++
         },
 
         deleteItem (clientIndex, id) {
-            this.clients[clientIndex].list.delete(id)
+            delete this.clients[clientIndex].list[id]
+
+            // i think i can stop using the change and start using Vue.delete or something like that.
+            this.change++
         }
     }
 })
