@@ -1,5 +1,5 @@
 import chai from 'chai'
-import legibleMergeable from '../src/legibleMergeable.js'
+import legibleMergeable from '../src/main.js'
 
 const { expect } = chai
 const MARKER = legibleMergeable.MERGEABLE_MARKER

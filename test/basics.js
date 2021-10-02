@@ -2,15 +2,14 @@
 /* eslint-disable no-unused-expressions */
 
 import chai from 'chai'
-import legibleMergeable from '../src/legibleMergeable.js'
+import lm from '../src/main.js'
 
-const lm = legibleMergeable
 const { expect } = chai
-const MARKER = legibleMergeable.MERGEABLE_MARKER
+const MARKER = lm.MERGEABLE_MARKER
 const newDate = date => (new Date(date)).toISOString()
 
-describe('api', function () {
-  describe('get base', function () {
+describe('basics', function () {
+  describe('base', function () {
     it('of an object', function () {
       const item = {
         id: 1,
@@ -66,31 +65,6 @@ describe('api', function () {
       }
 
       expect(item).to.eql(expected)
-    })
-
-    it('a mergeable object with the proxy via the use getter', function () {
-      const date = new Date()
-
-      const item = legibleMergeable.createProxy({
-        id: 7,
-        name: 'Oatmilk',
-        price: 140
-      }, { date })
-
-      item.price = 42
-      item.isOpen = true
-      delete item.name
-
-      const expected = {
-        id: 7,
-        price: 42,
-        isOpen: true
-      }
-
-      const expectedMarkerDates = { price: date, isOpen: date, name: date }
-
-      expect(item).to.eql(expected)
-      expect(item[MARKER]).to.eql(expectedMarkerDates)
     })
 
     it('a mergeable object with changes', function () {
@@ -161,6 +135,22 @@ describe('api', function () {
       expect(replicaA).to.not.eql(replicaB)
       expect(replicaC1).to.eql(replicaC2)
       expect(replicaC1).to.eql(expected)
+    })
+
+    it('objects with no differences', function () {
+      const replicaA = {
+        name: 'Almondmilk',
+        price: 290,
+        [MARKER]: { name: '2021-10-02' }
+      }
+
+      const replicaB = lm.clone(replicaA)
+
+      const doMerge1 = () => lm.merge(replicaA, replicaB, { failIfSame: true })
+      const doMerge2 = () => lm.merge(replicaB, replicaA, { failIfSame: true })
+
+      expect(doMerge1).to.throw(lm.MERGE_HAD_NO_DIFFERENCES_ERROR)
+      expect(doMerge2).to.throw(lm.MERGE_HAD_NO_DIFFERENCES_ERROR)
     })
   })
 
@@ -240,8 +230,8 @@ describe('api', function () {
       lm.set(replicaClone[3], 'authors', [...replicaClone[3].authors, 'Daisy'], { date })
       lm.drop(replicaClone[3], 'name', { date })
 
-      const replicaResultA = legibleMergeable.merge(replicaOriginal, replicaClone)
-      const replicaResultB = legibleMergeable.merge(replicaClone, replicaOriginal)
+      const replicaResultA = lm.merge(replicaOriginal, replicaClone)
+      const replicaResultB = lm.merge(replicaClone, replicaOriginal)
 
       const expected = {
         1: {
@@ -259,174 +249,6 @@ describe('api', function () {
       expect(replicaOriginal).to.not.eql(replicaClone)
       expect(replicaResultA).to.eql(replicaResultB)
       expect(replicaResultA).to.eql(expected)
-    })
-  })
-
-  describe('proxy', function () {
-    it('manipulate', function () {
-      const date = '2021-09-07'
-      const task = lm.createProxy({
-        title: 'Life Support',
-        done: false,
-        daysUntilWeekend: ['Friday'],
-        foo: {},
-        subtasks: {
-          1: lm.touch({ title: 'Shower', done: false }),
-          eat: { title: 'Eat', done: false, ingredients: ['Pasta'] },
-          3: { title: 'Sleep', done: false, [MARKER]: {} },
-          [MARKER]: {}
-        }
-      }, { date })
-
-      task.subtasks[4] = lm.touch({ title: 'Code' })
-      task.subtasks[1].title = task.subtasks[1].title + '!'
-
-      for (const id in task.subtasks) {
-        task.subtasks[id].done = true
-      }
-
-      // Array functions are still available
-      task.subtasks.eat.ingredients.push('Tofu')
-
-      const subtasks = task.subtasks
-
-      // This is expected behaviour, but may be confusing: The following changes
-      // don't trigger a modification date, cause it happens in its own object
-      // scope. Removing the element of an array is the same as changing the
-      // property of a nested Mergeable, where the parent also doesn't track
-      // the change.
-      task.daysUntilWeekend.shift()
-      task.foo.bar = 'foo bar'
-      // You would need to do an assignment to track it
-      task.foo = { bar: 'bar' }
-
-      if (3 in subtasks) {
-        delete subtasks[3]
-      }
-
-      const subtaskValues = Object.values(subtasks)
-      const isAllDone = subtaskValues.filter(t => t.done).length === subtaskValues.length
-
-      if (isAllDone) {
-        task.done = true
-      }
-
-      const expected = {
-        title: 'Life Support',
-        done: true,
-        daysUntilWeekend: [],
-        foo: { bar: 'bar' },
-        subtasks: {
-          1: { title: 'Shower!', done: true },
-          4: { title: 'Code', done: true },
-          eat: { title: 'Eat', done: true, ingredients: ['Pasta', 'Tofu'] }
-        }
-      }
-
-      expect(task).to.eql(expected)
-      expect(task[MARKER]).to.eql({ done: date, foo: date })
-      expect(task.subtasks[MARKER]).to.eql({ 3: date, 4: date })
-      expect(task.subtasks[1][MARKER]).to.eql({ done: date, title: date })
-      expect(task.subtasks[4][MARKER]).to.eql({ done: date })
-    })
-
-    it('base', function () {
-      const original = {
-        id: 1,
-        name: 'Milk',
-        price: 90,
-        [MARKER]: { name: '2021-02-02', price: '2021-05-05' }
-      }
-
-      const proxy = legibleMergeable.createProxy(original)
-      const based = legibleMergeable.base(proxy)
-
-      delete original[MARKER]
-
-      expect(based).to.be.eql(original)
-    })
-
-    it('clone', function () {
-      const original = {
-        id: 1,
-        name: 'Milk',
-        price: 90,
-        [MARKER]: { name: '2021-02-02', price: '2021-05-05' }
-      }
-
-      const proxy = legibleMergeable.createProxy(original)
-      const cloned = legibleMergeable.clone(proxy)
-
-      expect(cloned).to.be.eql(original)
-    })
-
-    it('merge', function () {
-      const docA = {
-        id: 1,
-        name: 'Milk',
-        price: 90,
-        [MARKER]: { name: '2021-02-02', price: '2021-05-05' }
-      }
-
-      const docB = legibleMergeable.createProxy({
-        id: 1,
-        name: 'Oatmilk',
-        price: 140,
-        ingredients: { oats: 5, [MARKER]: { oats: '2021-10-02' } },
-        [MARKER]: { name: '2021-09-30', ingredients: '2021-10-02' }
-      })
-
-      const merged1 = legibleMergeable.merge(docA, docB)
-      const merged2 = legibleMergeable.merge(docB, docA)
-
-      const expected = {
-        id: 1,
-        name: 'Oatmilk',
-        price: 90,
-        ingredients: { oats: 5, [MARKER]: { oats: '2021-10-02' } },
-        [MARKER]: { name: '2021-09-30', price: '2021-05-05', ingredients: '2021-10-02' }
-      }
-
-      expect(merged1).to.eql(merged2)
-      expect(merged1).to.eql(expected)
-    })
-  })
-
-  describe('array like functions', function () {
-    it('filter simple state', function () {
-      const elements = { 0: 'Abc', 1: 'df', 2: 'g', 3: '' }
-
-      const filteredByStringLength = lm.filter(elements, item => item.length > 1)
-      const filteredById = lm.filter(elements, (_, key) => key > 1)
-
-      expect(filteredByStringLength).to.be.eql(['Abc', 'df'])
-      expect(filteredById).to.be.eql(['g', ''])
-    })
-
-    it('filter nested', function () {
-      const list = { 100: { age: 12 } }
-
-      lm.set(list, 101, { age: 23 })
-      lm.set(list, 102, { age: 72 })
-
-      const filtered = lm.filter(list, item => item.age % 3 === 0)
-
-      expect(filtered).to.be.eql([{ age: 12 }, { age: 72 }])
-    })
-
-    it('filter by modification date')
-
-    it('map nested', function () {
-      const list = {
-        hqm: { base: 2, multiplier: 3, [MARKER]: {} },
-        owz: { base: -56, multiplier: 0.9, [MARKER]: {} },
-        vpt: { base: 7, multiplier: 21, [MARKER]: {} },
-        hox: { base: 24, multiplier: 2 }
-      }
-
-      const mapped = lm.map(list, item => item.base * item.multiplier)
-
-      expect(mapped).to.be.eql([6, -50.4, 147, 48])
     })
   })
 })

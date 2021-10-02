@@ -1,7 +1,7 @@
 import * as util from './util.js'
 import { MERGEABLE_MARKER } from './constants.js'
 import { transformMergeable } from './transform-mergeable.js'
-import * as mergeableFunctions from './mergeable-functions.js'
+import * as mergeableFunctions from './api.js'
 
 export function createProxy (dump, options) {
   const result = transformMergeable(dump, (item) => createProxy(item, options))

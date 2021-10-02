@@ -1,6 +1,6 @@
 import * as util from './util.js'
-import { MERGEABLE_MARKER as MARKER } from './constants.js'
-import { clone as cloneMergeable } from './mergeable-functions.js'
+import { MERGEABLE_MARKER as MARKER, MERGE_HAD_NO_DIFFERENCES_ERROR } from './constants.js'
+import { clone as cloneMergeable } from './api.js'
 
 function isPropertyMergeable (property) {
   return util.isObject(property) && util.hasMarker(property)
@@ -28,7 +28,9 @@ function setProperty (resultReference, state, key) {
   // else: The property was deleted
 }
 
-export function mergeFunction ({ a: docA, b: docB }) {
+export function mergeFunction ({ a: docA, b: docB, failIfSame }) {
+  let docsHaveDifferences = false
+
   const input = {
     a: { state: stateWithoutMarker(docA), mods: docA[MARKER] || {} },
     b: { state: stateWithoutMarker(docB), mods: docB[MARKER] || {} }
@@ -52,6 +54,8 @@ export function mergeFunction ({ a: docA, b: docB }) {
       setProperty(result, input.a.state, key)
       setModification(result, input.a.mods, key)
 
+      docsHaveDifferences = true
+
       continue
     }
 
@@ -59,6 +63,8 @@ export function mergeFunction ({ a: docA, b: docB }) {
     if (aChangedAt < bChangedAt) {
       setProperty(result, input.b.state, key)
       setModification(result, input.b.mods, key)
+
+      docsHaveDifferences = true
 
       continue
     }
@@ -75,6 +81,8 @@ export function mergeFunction ({ a: docA, b: docB }) {
         b: input.b.state[key]
       })
 
+      docsHaveDifferences = true
+
       continue
     }
 
@@ -82,7 +90,11 @@ export function mergeFunction ({ a: docA, b: docB }) {
     if (util.hasKey(input.a.state, key)) {
       result[key] = util.deepCopy(input.a.state[key])
     }
-    // else: The property is deleted on both sides
+    // else: The property was deleted on both sides
+  }
+
+  if (failIfSame && docsHaveDifferences === false) {
+    throw new Error(MERGE_HAD_NO_DIFFERENCES_ERROR)
   }
 
   return result
