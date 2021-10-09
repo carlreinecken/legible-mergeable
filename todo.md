@@ -15,7 +15,7 @@ and later
 
     task.refresh(this.dirty)
 
-or instead of `dirty` a changed/modified directive could be used
+or instead of `dirty` a changed/modified directive could be used. as demo this would be a bit complicated...
 
 ## soft delete
 

@@ -56,50 +56,50 @@
                 padding: 10px;
             }
 
-            .client .newItemInput {
+            .client .newTaskInput {
                 padding: 10px 0;
                 display: flex;
                 justify-content: space-between;
             }
 
-            .client .item {
+            .client .task {
                 display: flex;
                 justify-content: space-between;
                 margin: 10px 0 5px;
             }
 
-            .item > .item-done {
+            .task > .task-done {
                 margin: 0;
             }
 
-            .sendMode > .client.sendingSource {
+            .sendMode .client.sendingSource {
                 border: 3px dashed #305688;
             }
 
-            .sendMode > .client input,
-            .sendMode > .client button {
+            .sendMode .client input,
+            .sendMode .client button {
                 pointer-events: none;
                 opacity: 0.5;
             }
 
-            .sendMode > .client {
+            .sendMode .client {
                 color: #627998;
             }
 
-            .sendMode > .client:hover:not(.sendingSource) {
+            .sendMode .client:hover:not(.sendingSource) {
                 border-color: #93c2ff;
             }
 
-            .sendMode > .client:hover {
+            .sendMode .client:hover {
                 cursor: pointer;
                 background-color: #93c2ff;
             }
 
-            .sendMode > .client > .modifications {
+            .sendMode .client .modifications {
                 background-color: transparent;
             }
 
-            .client > .actionText {
+            .client .actionText {
                 display: none;
                 position: absolute;
                 text-align: center;
@@ -111,7 +111,7 @@
                 color: #fff;
             }
 
-            .sendMode > .client:hover > .actionText {
+            .sendMode .client:hover .actionText {
                 display: block;
             }
 
@@ -128,6 +128,55 @@
     </head>
 
     <body>
+        <script type="text/x-template" id="task">
+            <div class="task" :title="'Id: ' + task.id">
+                <input type="checkbox"
+                       class="task-done"
+                       v-model="task.done" />
+
+                <div>
+                    <input type="text" v-model.lazy="task.title" />
+                    <!-- <input type="text" :value="task.title" @input="task.title = $event.target.value" /> -->
+                </div>
+
+                <button class="task-delete" @click="$emit('deleteTask')">
+                    X
+                </button>
+            </div>
+        </script>
+
+        <script type="text/x-template" id="client">
+            <div @click="$emit('click')">
+                <header>
+                    <h3 style="margin: 0; font-size: 1.6em;">{{ client.name }}</h3>
+
+                    <div>
+                        <button @click="$emit('clone')">Clone</button>
+                        <button @click.stop="$emit('send')">Send</button>
+                    </div>
+                </header>
+
+                <div class="newTaskInput">
+                    <input v-model="newTaskInput"
+                           placeholder="New Task"
+                           @keyup.enter="addTask()" />
+                    <button @click="addTask()">Add</button>
+                </div>
+
+                <div v-for="task in client.list"
+                      :key="client.name + task.id">
+                    <task :task="task"
+                          @change="emit('change')"
+                          @deleteTask="deleteTask(task.id)" />
+
+                    <code v-show="showModifications"
+                          class="modifications"
+                          title="">{{ task.id }}: {{ lm.modifications(task) }}</span>
+                    </code>
+                </div>
+            </div>
+        </script>
+
         <div id="app">
             <label style="margin-right: 30px">
                 <input type="checkbox" v-model="showModifications" />
@@ -140,64 +189,31 @@
                 Stop Sending
             </button>
 
-            <!-- <button @click="init">Init</button> -->
-
             <br /><br />
 
-            <div class="clients" :key="change" :class="{ sendMode: sendFrom != null }">
+            <div class="clients"
+                 :key="change"
+                 :class="{ sendMode: sendFrom != null }">
                 <div v-for="(client, clientIndex) in clients"
-                     :key="client.name"
                      class="client"
-                     :class="{ sendingSource: sendFrom == clientIndex }"
-                     @click="sendToClient(clientIndex)">
-                    <div>
-                        <header>
-                            <h3 style="margin: 0; font-size: 1.6em;">{{ client.name }}</h3>
-                            <div>
-                                <button @click="cloneClient(clientIndex)">Clone</button>
-                                <button @click.stop="startSendMode(clientIndex)">Send</button>
-                            </div>
-                        </header>
-
-                        <div class="newItemInput">
-                            <input v-model="client.newItemInput"
-                                   placeholder="New Item"
-                                   @keyup.enter="addItem(clientIndex)" />
-                            <button @click="addItem(clientIndex)">Add</button>
-                        </div>
-
-                        <div
-                             v-for="item in client.list"
-                             :key="client.name + item.id"
-                             :title="'Id: ' + item.id">
-                            <div class="item">
-                                <input type="checkbox"
-                                       class="item-done"
-                                       v-model="item.done" />
-
-                                <div>
-                                    <!-- the proxy is only completely reactive when the list item -->
-                                    <!-- existed already in the list it was cloned from -->
-                                    <input type="text" v-model.lazy="item.title" />
-                                    <!-- <input type="text" -->
-                                    <!--        :value="item.title" -->
-                                    <!--        @input="item.title = $event.target.value" /> -->
-                                </div>
-
-                                <button class="item-delete"
-                                        @click="deleteItem(clientIndex, item.id)">
-                                    X
-                                </button>
-                            </div>
-
-                            <code v-show="showModifications" class="modifications">{{ item.id }}: {{ lm.modifications(item) }}</code>
-                        </div>
-                    </div>
+                            :class="{ sendingSource: sendFrom == clientIndex }"
+                     :key="client.name">
+                    <client :client="client"
+                            :show-modifications="showModifications"
+                            @send="startSendMode(clientIndex)"
+                            @clone="cloneClient(clientIndex)"
+                            @change="change++"
+                            @click="sendToClient(clientIndex)">
+                    </client>
 
                     <h3 class="actionText">Send {{ clients[sendFrom]?.name }} here!</h3>
                     <code v-show="showModifications" class="modifications">{{ lm.modifications(client.list) }}</code>
                 </div>
             </div>
+
+            <span v-show="showModifications">
+                Tasks are not reactive due to <a href="https://vuejs.org/v2/guide/reactivity.html#For-Objects">Vue's Reactivity System</a>. After toggling "Show Modifications" or sending, the modification dates will show their correct time.
+            </span>
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
@@ -206,17 +222,59 @@
         <script type="module">
 const randomId = (length) => parseInt(Math.random().toString().slice(2, 2 + length)).toString(36)
 
-const app = new Vue({
-    /*
-    components: {
-      clients: {
-        components: {
-          task: {
-          }
-        }
+const client = {
+  components: {
+    task: {
+      template: '#task',
+
+      props: {
+        task: Object,
       },
+    }
+  },
+
+  template: '#client',
+
+  props: {
+    client: Object,
+    showModifications: Boolean,
+  },
+
+  data: () => ({
+    newTaskInput: '',
+  }),
+
+  computed: {
+    lm () {
+      return legibleMergeable
+    }
+  },
+
+  methods: {
+    addTask () {
+      const id = randomId(10)
+
+      const task = legibleMergeable.touch({
+        id,
+        done: false,
+        title: this.newTaskInput
+      })
+
+      this.client.list[id] = task
+      this.newTaskInput = ''
     },
-    */
+
+    deleteTask (id) {
+      delete this.client.list[id]
+
+      // i think i can stop using the change and start using Vue.delete or something like that.
+      this.$emit('change')
+    },
+  },
+}
+
+const app = new Vue({
+    components: { client },
 
     el: '#app',
 
@@ -243,15 +301,10 @@ const app = new Vue({
             this.addClient(legibleMergeable.touch({}))
 
             const index = 0
-            this.clients[index].newItemInput = 'Change Lightbulb'
-            this.addItem(index)
-            this.clients[index].newItemInput = 'Cook spicy meal'
-            this.addItem(index)
-
-            // only this makes the first client reactive..?
-            this.startSendMode(index)
-            this.sendToClient(0)
-            this.stopSendMode()
+            const id = randomId(10)
+            this.clients[index].list[id] = legibleMergeable.touch({
+              id, done: false, title: 'Change Lightbulb',
+            })
         },
 
         addClient (list) {
@@ -261,7 +314,6 @@ const app = new Vue({
 
             this.clients.push({
               name,
-              newItemInput: '',
               list: legibleMergeable.createProxy(list)
             })
         },
@@ -279,6 +331,7 @@ const app = new Vue({
         },
 
         sendToClient (clientIndex) {
+            console.log('sentToClient', this.sendFrom, clientIndex)
             if (this.sendFrom == null) return
 
             const merged = legibleMergeable.merge(
@@ -288,33 +341,7 @@ const app = new Vue({
 
 
             this.clients[clientIndex].list = legibleMergeable.createProxy(merged)
-
-            //this.change++
         },
-
-        addItem (clientIndex) {
-            const id = randomId(10)
-
-            // the mergeable proxy gets only be fully reactive if the new item
-            // is registered to the Vue reactivity system
-            const item = Vue.observable(legibleMergeable.touch({
-                id,
-                done: false,
-                title: this.clients[clientIndex].newItemInput
-            }))
-
-            this.clients[clientIndex].list[id] = item
-            this.clients[clientIndex].newItemInput = ''
-
-            this.change++
-        },
-
-        deleteItem (clientIndex, id) {
-            delete this.clients[clientIndex].list[id]
-
-            // i think i can stop using the change and start using Vue.delete or something like that.
-            this.change++
-        }
     }
 })
         </script>
