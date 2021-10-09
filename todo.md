@@ -1,6 +1,21 @@
+* dirty directive instead of proxy in v-model
 * soft delete
 * manual order
 * NICE TO HAVE: research how to compress modification dates if there are extacly same of multiple properties
+
+## dirty
+
+    <input
+      v-model="task.title"
+      type="text"
+      v-dirty="dirty.push('title')"
+    />
+
+and later
+
+    task.refresh(this.dirty)
+
+or instead of `dirty` a changed/modified directive could be used
 
 ## soft delete
 
