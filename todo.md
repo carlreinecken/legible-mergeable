@@ -1,3 +1,4 @@
+* fix "null" error in transform mergeable (just a property that is null...)
 * dirty directive instead of proxy in v-model
 * soft delete
 * manual order
