@@ -7,6 +7,14 @@
   const MERGEABLE_MARKER = '^lm';
 
   const MERGE_HAD_NO_DIFFERENCES_ERROR = 'MERGE_HAD_NO_DIFFERENCES_ERROR';
+  const WRONG_TYPE_GIVEN_EXPECTED_OBJECT = 'WRONG_TYPE_GIVEN_EXPECTED_OBJECT';
+
+  var constants = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    MERGEABLE_MARKER: MERGEABLE_MARKER,
+    MERGE_HAD_NO_DIFFERENCES_ERROR: MERGE_HAD_NO_DIFFERENCES_ERROR,
+    WRONG_TYPE_GIVEN_EXPECTED_OBJECT: WRONG_TYPE_GIVEN_EXPECTED_OBJECT
+  });
 
   function hasKey (object, key) {
     return Object.prototype.hasOwnProperty.call(object, key)
@@ -32,6 +40,10 @@
   function transformMergeable (dump, transformFn) {
     const result = {};
 
+    if (!isObject(dump)) {
+      dump = {};
+    }
+
     for (const key in dump) {
       if (!hasKey(dump, key)) {
         continue
@@ -39,12 +51,14 @@
 
       const property = dump[key];
 
-      if (typeof property !== 'object') {
+      if (!isObject(property)) {
         result[key] = property;
       } else if (key === MERGEABLE_MARKER) {
         continue
       } else if (hasMarker(property)) {
-        result[key] = transformFn ? transformFn(property) : transformMergeable(property);
+        result[key] = transformFn
+          ? transformFn(property)
+          : transformMergeable(property);
       } else {
         result[key] = deepCopy(property);
       }
@@ -53,15 +67,23 @@
     return result
   }
 
-  function renew (mergeable, key, options) {
+  function renew (mergeable, keys, options) {
     options = options || {};
 
     touch(mergeable);
 
-    mergeable[MERGEABLE_MARKER][key] = options.date || (new Date()).toISOString();
+    keys = Array.isArray(keys) ? keys : [keys];
+
+    for (const key of keys) {
+      mergeable[MERGEABLE_MARKER][key] = options.date || (new Date()).toISOString();
+    }
   }
 
   function touch (mergeable) {
+    if (!isObject(mergeable)) {
+      throw new TypeError(WRONG_TYPE_GIVEN_EXPECTED_OBJECT)
+    }
+
     if (!hasKey(mergeable, MERGEABLE_MARKER)) {
       mergeable[MERGEABLE_MARKER] = {};
     }
@@ -71,6 +93,7 @@
 
   function set (mergeable, key, value, options) {
     mergeable[key] = value;
+
     renew(mergeable, key, options);
   }
 
@@ -78,10 +101,6 @@
     delete mergeable[key];
 
     renew(mergeable, key, options);
-  }
-
-  function modifications (mergeable) {
-    return mergeable[MERGEABLE_MARKER] || {}
   }
 
   function size (mergeable) {
@@ -93,61 +112,33 @@
   }
 
   function clone (mergeable) {
-    const transformed = transformMergeable(mergeable || {}, property => clone(property));
+    const transformed = transformMergeable(mergeable, property => clone(property));
 
-    if (hasKey(mergeable, MERGEABLE_MARKER)) {
+    if (isObject(mergeable) && hasKey(mergeable, MERGEABLE_MARKER)) {
       transformed[MERGEABLE_MARKER] = { ...mergeable[MERGEABLE_MARKER] };
     }
 
     return transformed
   }
 
-  function filter (mergeable, callback) {
-    const result = [];
-
-    for (const key in mergeable) {
-      if (!hasKey(mergeable, key) || key === MERGEABLE_MARKER) {
-        continue
-      }
-
-      if (callback(mergeable[key], key, modifications(mergeable)[key])) {
-        result.push(mergeable[key]);
-      }
+  function modifications (mergeable) {
+    if (!isObject(mergeable) || !hasKey(mergeable, MERGEABLE_MARKER)) {
+      return {}
     }
 
-    return result
+    return mergeable[MERGEABLE_MARKER]
   }
 
-  function map (mergeable, callback) {
-    const result = [];
-
-    touch(mergeable);
-
-    for (const key in mergeable) {
-      if (!hasKey(mergeable, key) || key === MERGEABLE_MARKER) {
-        continue
-      }
-
-      const evaluation = callback(mergeable[key], key, modifications(mergeable)[key]);
-
-      result.push(evaluation);
-    }
-
-    return result
-  }
-
-  var mergeableFunctions = /*#__PURE__*/Object.freeze({
+  var apiFunctions = /*#__PURE__*/Object.freeze({
     __proto__: null,
     renew: renew,
     touch: touch,
     set: set,
     drop: drop,
-    modifications: modifications,
     size: size,
     base: base,
     clone: clone,
-    filter: filter,
-    map: map
+    modifications: modifications
   });
 
   function isPropertyMergeable (property) {
@@ -281,9 +272,49 @@
     })
   }
 
+  function filter (mergeable, callback) {
+    const result = [];
+
+    for (const key in mergeable) {
+      if (!hasKey(mergeable, key) || key === MERGEABLE_MARKER) {
+        continue
+      }
+
+      const modification = modifications(mergeable)[key];
+
+      if (!callback || callback(mergeable[key], key, modification)) {
+        result.push(mergeable[key]);
+      }
+    }
+
+    return result
+  }
+
+  function map (mergeable, callback) {
+    const result = [];
+
+    for (const key in mergeable) {
+      if (!hasKey(mergeable, key) || key === MERGEABLE_MARKER) {
+        continue
+      }
+
+      const modification = modifications(mergeable)[key];
+      const evaluation = callback(mergeable[key], key, modification);
+
+      result.push(evaluation);
+    }
+
+    return result
+  }
+
+  var apiArrayFunctions = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    filter: filter,
+    map: map
+  });
+
   var main = {
-    MERGEABLE_MARKER,
-    MERGE_HAD_NO_DIFFERENCES_ERROR,
+    ...constants,
 
     merge (mergeableA, mergeableB) {
       return mergeFunction(mergeableA, mergeableB)
@@ -295,7 +326,9 @@
 
     createProxy,
 
-    ...mergeableFunctions
+    ...apiFunctions,
+
+    ...apiArrayFunctions
   };
 
   return main;
