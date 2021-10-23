@@ -31,6 +31,14 @@ describe('array', function () {
 
   it('filter by modifications')
 
+  it('filter without callback gives back array without marker', function () {
+    const elements = { 0: 'Abc', 2: 'g', 3: '', [MARKER]: {} }
+
+    const filtered = lm.filter(elements)
+
+    expect(filtered).to.be.eql(['Abc', 'g', ''])
+  })
+
   it('map nested', function () {
     const list = {
       hqm: { base: 2, multiplier: 3, [MARKER]: {} },

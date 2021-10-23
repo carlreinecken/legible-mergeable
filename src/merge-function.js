@@ -1,6 +1,6 @@
 import * as util from './util.js'
 import { MERGEABLE_MARKER as MARKER, MERGE_HAD_NO_DIFFERENCES_ERROR } from './constants.js'
-import { clone as cloneMergeable } from './api.js'
+import { clone as cloneMergeable } from './api-functions.js'
 
 function isPropertyMergeable (property) {
   return util.isObject(property) && util.hasMarker(property)

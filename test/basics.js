@@ -41,6 +41,33 @@ describe('basics', function () {
       expect(base[MARKER]).to.be.undefined
       expect(lm.modifications(original)).to.eql(original[MARKER])
     })
+
+    it('of an object with null values', function () {
+      const item = {
+        id: 44,
+        name: null,
+        price: 90
+      }
+
+      const base = { ...item }
+
+      expect(lm.base(item)).to.eql(base)
+    })
+
+    it('base of non object', function () {
+      expect(lm.base(null)).to.eql({})
+      expect(lm.base('hi bob')).to.eql({})
+    })
+
+    it('clone of non object', function () {
+      expect(lm.clone(null)).to.eql({})
+      expect(lm.clone('hi bob')).to.eql({})
+    })
+
+    it('touch a non object', function () {
+      expect(() => lm.touch(null)).to.throw(lm.OBJECT_EXPECTED)
+      expect(() => lm.touch('hi bob')).to.throw(lm.OBJECT_EXPECTED)
+    })
   })
 
   describe('manipulate', function () {
@@ -95,6 +122,36 @@ describe('basics', function () {
         price: 240,
         isCold: true,
         [MARKER]: { price: newDate('2020-09-01'), name: date, isOpen: date, isCold: date }
+      }
+
+      expect(item).to.eql(expected)
+    })
+
+    it('renew a key', function () {
+      const item = { name: 'oatmilk', price: 140 }
+
+      lm.renew(item, 'name', { date: '2021-10-23' })
+
+      const expected = { name: 'oatmilk', price: 140, [MARKER]: { name: '2021-10-23' } }
+      expect(item).to.eql(expected)
+    })
+
+    it('set a key of a non object', function () {
+      const setFn = () => lm.set('hello', 'name', 'bob')
+
+      expect(setFn).to.throw('Cannot create property \'name\' on string \'hello\'')
+    })
+
+    it('renew multiple keys', function () {
+      const item = { name: 'almondmilk', price: 210 }
+      const date = '2021-10-23'
+
+      lm.renew(item, ['name', 'price'], { date })
+
+      const expected = {
+        name: 'almondmilk',
+        price: 210,
+        [MARKER]: { name: date, price: date }
       }
 
       expect(item).to.eql(expected)

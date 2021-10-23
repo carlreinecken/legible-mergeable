@@ -1,11 +1,11 @@
-import { MERGEABLE_MARKER, MERGE_HAD_NO_DIFFERENCES_ERROR } from './constants.js'
+import * as constants from './constants.js'
 import { mergeFunction } from './merge-function.js'
 import { createProxy } from './proxy.js'
-import * as mergeableFunctions from './api.js'
+import * as apiFunctions from './api-functions.js'
+import * as apiArrayFunctions from './api-array-functions.js'
 
 export default {
-  MERGEABLE_MARKER,
-  MERGE_HAD_NO_DIFFERENCES_ERROR,
+  ...constants,
 
   merge (mergeableA, mergeableB) {
     return mergeFunction(mergeableA, mergeableB)
@@ -17,5 +17,7 @@ export default {
 
   createProxy,
 
-  ...mergeableFunctions
+  ...apiFunctions,
+
+  ...apiArrayFunctions
 }

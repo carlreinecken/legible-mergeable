@@ -1,4 +1,3 @@
-* fix "null" error in transform mergeable (just a property that is null...)
 * dirty directive instead of proxy in v-model
 * soft delete
 * manual order
@@ -14,7 +13,7 @@
 
 and later
 
-    task.refresh(this.dirty)
+    task.renew(this.task, this.dirty)
 
 or instead of `dirty` a changed/modified directive could be used. as demo this would be a bit complicated...
 
@@ -26,11 +25,19 @@ encourage "soft delete" in readme: use some flag in your own object to hide the 
 
 options which wouldn't need to alter the merge function:
 
-1. ordered ids as own array in list as atomic value. What happens to added properties from other clients while someone else overwrites the order? this problem makes it basically impossible to make the order a single atomic value.
-2. keep the positions as nested mergeable in the list. which would make things really weird cause a key would be tracked twice; once as object property and once its position.
-3. put the position in the list element itself. the `id_key` would need to be saved inside the list anyway, it could also save a `position_key`, so the list knows where to look when ordering. user would need to use `insert` instead of `set` so a position is generated...
+### option 3: put the position in the list element itself.
 
-### option 1 (not possible)
+the `id_key` would need to be saved inside the list anyway, it could also save a `position_key`, so the list knows where to look when ordering. user would need to use `insert` instead of `set` so a position is generated...
+
+however this has one problem: if the items are shared across different lists and every list should have its own ordering
+
+### option 2: keep the positions as nested mergeable in the list
+
+which would make things really weird cause a key would be tracked twice; once as object property and once its position.
+
+### option 1 (not possible): ordered ids as own array in list as atomic value
+
+Problem: What happens to added properties from other clients while someone else overwrites the order? this problem makes it basically impossible to make the order a single atomic value.
 
     const list = legibleMergeable.fromList([
       1,
