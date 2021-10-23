@@ -1,8 +1,8 @@
 import chai from 'chai'
-import legibleMergeable from '../src/main.js'
+import lm from '../src/main.js'
 
 const { expect } = chai
-const MARKER = legibleMergeable.MERGEABLE_MARKER
+const MARKER = lm.MERGEABLE_MARKER
 
 /* eslint-disable no-unused-expressions */
 
@@ -32,10 +32,10 @@ describe('merge objects', function () {
       [MARKER]: { hungry: '2020-07-14', pet: '2020-09-01', age: '2020-07-02' }
     }
 
-    expect(legibleMergeable.merge(docA, docB)).to.eql(expected)
-    expect(legibleMergeable.merge(docB, docA)).to.eql(expected)
-    expect(legibleMergeable.merge(docA, docA)).to.eql(docA)
-    expect(legibleMergeable.merge(docB, docB)).to.eql(docB)
+    expect(lm.merge(docA, docB)).to.eql(expected)
+    expect(lm.merge(docB, docA)).to.eql(expected)
+    expect(lm.merge(docA, docA)).to.eql(docA)
+    expect(lm.merge(docB, docB)).to.eql(docB)
   })
 
   it('two with new and deleted properties', function () {
@@ -54,10 +54,10 @@ describe('merge objects', function () {
       [MARKER]: { name: '2020-08-09', pet: '2020-09-01' }
     }
 
-    expect(legibleMergeable.merge(docA, docB)).to.eql(expected)
-    expect(legibleMergeable.merge(docB, docA)).to.eql(expected)
-    expect(legibleMergeable.merge(docA, docA)).to.eql(docA)
-    expect(legibleMergeable.merge(docB, docB)).to.eql(docB)
+    expect(lm.merge(docA, docB)).to.eql(expected)
+    expect(lm.merge(docB, docA)).to.eql(expected)
+    expect(lm.merge(docA, docA)).to.eql(docA)
+    expect(lm.merge(docB, docB)).to.eql(docB)
   })
 
   it('three', function () {
@@ -93,14 +93,14 @@ describe('merge objects', function () {
       [MARKER]: { age: '2020-07-02', hungry: '2020-07-14', pet: '2020-07-24' }
     }
 
-    expect(legibleMergeable.merge(docA, legibleMergeable.merge(docB, docC))).to.eql(expected)
-    expect(legibleMergeable.merge(legibleMergeable.merge(docB, docA), docC)).to.eql(expected)
-    expect(legibleMergeable.merge(docB, legibleMergeable.merge(docC, docA))).to.eql(expected)
-    expect(legibleMergeable.merge(docB, legibleMergeable.merge(docB, docB))).to.eql(docB)
+    expect(lm.merge(docA, lm.merge(docB, docC))).to.eql(expected)
+    expect(lm.merge(lm.merge(docB, docA), docC)).to.eql(expected)
+    expect(lm.merge(docB, lm.merge(docC, docA))).to.eql(expected)
+    expect(lm.merge(docB, lm.merge(docB, docB))).to.eql(docB)
 
-    expect(legibleMergeable.merge(docA, docA)).to.eql(docA)
-    expect(legibleMergeable.merge(docB, docB)).to.eql(docB)
-    expect(legibleMergeable.merge(docC, docC)).to.eql(docC)
+    expect(lm.merge(docA, docA)).to.eql(docA)
+    expect(lm.merge(docB, docB)).to.eql(docB)
+    expect(lm.merge(docC, docC)).to.eql(docC)
   })
 
   it('nested properties, list as top level', function () {
@@ -120,12 +120,59 @@ describe('merge objects', function () {
       [MARKER]: { 1: '2021-09-01' }
     }
 
-    expect(legibleMergeable.merge(docA, docB)).to.eql(expected)
-    expect(legibleMergeable.merge(docB, docA)).to.eql(expected)
-    expect(legibleMergeable.merge(docA, docA)).to.eql(docA)
-    expect(legibleMergeable.merge(docB, docB)).to.eql(docB)
+    expect(lm.merge(docA, docB)).to.eql(expected)
+    expect(lm.merge(docB, docA)).to.eql(expected)
+    expect(lm.merge(docA, docA)).to.eql(docA)
+    expect(lm.merge(docB, docB)).to.eql(docB)
   })
 
   xit('tree', function () {
+  })
+
+  it('fail with same object', function () {
+    const replicaA = { name: 'Almondmilk', price: 290, [MARKER]: { name: '2021-10-02' } }
+    const replicaB = { name: 'Almondmilk', price: 290, [MARKER]: { name: '2021-10-02' } }
+
+    const doMerge1 = () => lm.mergeOrFail(replicaA, replicaB)
+    const doMerge2 = () => lm.mergeOrFail(replicaB, replicaA)
+
+    expect(doMerge1).to.throw(lm.MERGE_HAD_NO_DIFFERENCES_ERROR)
+    expect(doMerge2).to.throw(lm.MERGE_HAD_NO_DIFFERENCES_ERROR)
+  })
+
+  it('fail with same nested object', function () {
+    const replicaA = {
+      [MARKER]: { H: '2021-10-24' },
+      G: { age: 44, name: 'bob', [MARKER]: { age: '2021-09-03' } }
+    }
+
+    const replicaB = {
+      G: { name: 'bob', age: 44, [MARKER]: { age: '2021-09-03' } },
+      [MARKER]: { H: '2021-10-24' }
+    }
+
+    const doMerge1 = () => lm.mergeOrFail(replicaA, replicaB)
+    const doMerge2 = () => lm.mergeOrFail(replicaB, replicaA)
+
+    expect(doMerge1).to.throw(lm.MERGE_HAD_NO_DIFFERENCES_ERROR)
+    expect(doMerge2).to.throw(lm.MERGE_HAD_NO_DIFFERENCES_ERROR)
+  })
+
+  it('doesn\'t fail because nested object is different', function () {
+    const replicaA = {
+      G: { name: 'valentin', age: 14, [MARKER]: { age: '2021-10-24' } },
+      [MARKER]: { H: '2021-10-24' }
+    }
+
+    const replicaB = {
+      G: { name: 'bob', age: 14, [MARKER]: { age: '2021-09-03' } },
+      [MARKER]: { H: '2021-10-24' }
+    }
+
+    const doMerge1 = () => lm.mergeOrFail(replicaA, replicaB)
+    const doMerge2 = () => lm.mergeOrFail(replicaB, replicaA)
+
+    expect(doMerge1).to.not.throw(lm.MERGE_HAD_NO_DIFFERENCES_ERROR)
+    expect(doMerge2).to.not.throw(lm.MERGE_HAD_NO_DIFFERENCES_ERROR)
   })
 })

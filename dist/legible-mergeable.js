@@ -215,7 +215,7 @@
 
       // Call the merge function recursively if both properties are Mergeables
       if (isPropertyMergeable(input.a.state[key]) && isPropertyMergeable(input.b.state[key])) {
-        result[key] = mergeFunction(input.a.state[key], input.b.state[key]);
+        result[key] = mergeFunction(input.a.state[key], input.b.state[key], throwErrorIfSame);
 
         docsHaveDifferences = true;
 

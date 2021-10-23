@@ -173,7 +173,7 @@ describe('basics', function () {
 
       const replicaB = lm.clone(replicaA)
 
-      const date = newDate('2020-08-04')
+      const date = '2020-08-04'
 
       lm.set(replicaB, 'name', 'Almondmilk', { date })
       lm.set(replicaB, 'isCold', false, { date })
@@ -192,22 +192,6 @@ describe('basics', function () {
       expect(replicaA).to.not.eql(replicaB)
       expect(replicaC1).to.eql(replicaC2)
       expect(replicaC1).to.eql(expected)
-    })
-
-    it('objects with no differences', function () {
-      const replicaA = {
-        name: 'Almondmilk',
-        price: 290,
-        [MARKER]: { name: '2021-10-02' }
-      }
-
-      const replicaB = lm.clone(replicaA)
-
-      const doMerge1 = () => lm.mergeOrFail(replicaA, replicaB)
-      const doMerge2 = () => lm.mergeOrFail(replicaB, replicaA)
-
-      expect(doMerge1).to.throw(lm.MERGE_HAD_NO_DIFFERENCES_ERROR)
-      expect(doMerge2).to.throw(lm.MERGE_HAD_NO_DIFFERENCES_ERROR)
     })
   })
 
