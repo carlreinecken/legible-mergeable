@@ -1,5 +1,5 @@
 import * as util from './util.js'
-import { MERGEABLE_MARKER as MARKER, MERGE_RESULT_IS_IDENTICAL } from './constants.js'
+import { MERGEABLE_MARKER as MARKER } from './constants.js'
 import { clone as cloneMergeable } from './api-functions.js'
 
 function isPropertyMergeable (property) {
@@ -28,8 +28,8 @@ function setProperty (resultReference, state, key) {
   // else: The property was deleted
 }
 
-export function mergeFunction (docA, docB, throwErrorIfSame) {
-  let docsHaveDifferences = false
+export function mergeFunction (docA, docB) {
+  let isIdentical = true
 
   const input = {
     a: { state: stateWithoutMarker(docA), mods: docA[MARKER] || {} },
@@ -54,7 +54,7 @@ export function mergeFunction (docA, docB, throwErrorIfSame) {
       setProperty(result, input.a.state, key)
       setModification(result, input.a.mods, key)
 
-      docsHaveDifferences = true
+      isIdentical = false
 
       continue
     }
@@ -64,7 +64,7 @@ export function mergeFunction (docA, docB, throwErrorIfSame) {
       setProperty(result, input.b.state, key)
       setModification(result, input.b.mods, key)
 
-      docsHaveDifferences = true
+      isIdentical = false
 
       continue
     }
@@ -76,15 +76,11 @@ export function mergeFunction (docA, docB, throwErrorIfSame) {
 
     // Call the merge function recursively if both properties are Mergeables
     if (isPropertyMergeable(input.a.state[key]) && isPropertyMergeable(input.b.state[key])) {
-      try {
-        result[key] = mergeFunction(input.a.state[key], input.b.state[key], throwErrorIfSame)
+      const property = mergeFunction(input.a.state[key], input.b.state[key])
 
-        docsHaveDifferences = true
-      } catch (error) {
-        if (error.message !== MERGE_RESULT_IS_IDENTICAL) {
-          throw error
-        }
-      }
+      result[key] = property.result
+
+      isIdentical = isIdentical && property.isIdentical
 
       continue
     }
@@ -96,9 +92,5 @@ export function mergeFunction (docA, docB, throwErrorIfSame) {
     // else: The property was deleted on both sides
   }
 
-  if (throwErrorIfSame && docsHaveDifferences === false) {
-    throw new Error(MERGE_RESULT_IS_IDENTICAL)
-  }
-
-  return result
+  return { result, isIdentical }
 }

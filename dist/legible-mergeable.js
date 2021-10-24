@@ -167,8 +167,8 @@
     // else: The property was deleted
   }
 
-  function mergeFunction (docA, docB, throwErrorIfSame) {
-    let docsHaveDifferences = false;
+  function mergeFunction (docA, docB) {
+    let isIdentical = true;
 
     const input = {
       a: { state: stateWithoutMarker(docA), mods: docA[MERGEABLE_MARKER] || {} },
@@ -193,7 +193,7 @@
         setProperty(result, input.a.state, key);
         setModification(result, input.a.mods, key);
 
-        docsHaveDifferences = true;
+        isIdentical = false;
 
         continue
       }
@@ -203,7 +203,7 @@
         setProperty(result, input.b.state, key);
         setModification(result, input.b.mods, key);
 
-        docsHaveDifferences = true;
+        isIdentical = false;
 
         continue
       }
@@ -215,15 +215,11 @@
 
       // Call the merge function recursively if both properties are Mergeables
       if (isPropertyMergeable(input.a.state[key]) && isPropertyMergeable(input.b.state[key])) {
-        try {
-          result[key] = mergeFunction(input.a.state[key], input.b.state[key], throwErrorIfSame);
+        const property = mergeFunction(input.a.state[key], input.b.state[key]);
 
-          docsHaveDifferences = true;
-        } catch (error) {
-          if (error.message !== MERGE_RESULT_IS_IDENTICAL) {
-            throw error
-          }
-        }
+        result[key] = property.result;
+
+        isIdentical = isIdentical && property.isIdentical;
 
         continue
       }
@@ -235,11 +231,7 @@
       // else: The property was deleted on both sides
     }
 
-    if (throwErrorIfSame && docsHaveDifferences === false) {
-      throw new Error(MERGE_RESULT_IS_IDENTICAL)
-    }
-
-    return result
+    return { result, isIdentical }
   }
 
   function createProxy (dump, options) {
@@ -323,11 +315,17 @@
     ...constants,
 
     merge (mergeableA, mergeableB) {
-      return mergeFunction(mergeableA, mergeableB)
+      return mergeFunction(mergeableA, mergeableB).result
     },
 
     mergeOrFail (mergeableA, mergeableB) {
-      return mergeFunction(mergeableA, mergeableB, true)
+      const { result, isIdentical } = mergeFunction(mergeableA, mergeableB);
+
+      if (isIdentical) {
+        throw new Error(MERGE_RESULT_IS_IDENTICAL)
+      }
+
+      return result
     },
 
     createProxy,

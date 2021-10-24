@@ -129,7 +129,7 @@ describe('merge objects', function () {
   xit('tree', function () {
   })
 
-  it('fail with same object', function () {
+  it('fail with identical object', function () {
     const replicaA = { name: 'Almondmilk', price: 290, [MARKER]: { name: '2021-10-02' } }
     const replicaB = { name: 'Almondmilk', price: 290, [MARKER]: { name: '2021-10-02' } }
 
@@ -140,7 +140,7 @@ describe('merge objects', function () {
     expect(doMerge2).to.throw(lm.MERGE_RESULT_IS_IDENTICAL)
   })
 
-  it('fail with same nested object', function () {
+  it('fail with identical nested object', function () {
     const replicaA = {
       [MARKER]: { H: '2021-10-24' },
       G: { age: 44, name: 'bob', [MARKER]: { age: '2021-09-03' } }
@@ -176,5 +176,31 @@ describe('merge objects', function () {
 
     expect(doMerge1).to.not.throw(lm.MERGE_RESULT_IS_IDENTICAL)
     expect(doMerge2).to.not.throw(lm.MERGE_RESULT_IS_IDENTICAL)
+  })
+
+  it('doesn\'t fail when nested object is identical but parent changed', function () {
+    const replicaA = {
+      [MARKER]: { N: '2021-10-24' },
+      N: { title: 'network', [MARKER]: {} }
+    }
+
+    const replicaB = {
+      [MARKER]: { N: '2021-10-24', R: '2021-10-25' },
+      N: { title: 'network', [MARKER]: {} },
+      R: { title: 'renew', [MARKER]: {} }
+    }
+
+    const result1 = lm.mergeOrFail(replicaA, replicaB)
+    const result2 = lm.mergeOrFail(replicaB, replicaA)
+
+    const expected = {
+      [MARKER]: { N: '2021-10-24', R: '2021-10-25' },
+      N: { title: 'network', [MARKER]: {} },
+      R: { title: 'renew', [MARKER]: {} }
+    }
+
+    expect(result1).to.eql(expected)
+    expect(result2).to.eql(expected)
+    expect(result1).to.eql(result2)
   })
 })

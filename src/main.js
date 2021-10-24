@@ -8,11 +8,17 @@ export default {
   ...constants,
 
   merge (mergeableA, mergeableB) {
-    return mergeFunction(mergeableA, mergeableB)
+    return mergeFunction(mergeableA, mergeableB).result
   },
 
   mergeOrFail (mergeableA, mergeableB) {
-    return mergeFunction(mergeableA, mergeableB, true)
+    const { result, isIdentical } = mergeFunction(mergeableA, mergeableB)
+
+    if (isIdentical) {
+      throw new Error(constants.MERGE_RESULT_IS_IDENTICAL)
+    }
+
+    return result
   },
 
   createProxy,
