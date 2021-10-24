@@ -136,8 +136,8 @@ describe('merge objects', function () {
     const doMerge1 = () => lm.mergeOrFail(replicaA, replicaB)
     const doMerge2 = () => lm.mergeOrFail(replicaB, replicaA)
 
-    expect(doMerge1).to.throw(lm.MERGE_HAD_NO_DIFFERENCES_ERROR)
-    expect(doMerge2).to.throw(lm.MERGE_HAD_NO_DIFFERENCES_ERROR)
+    expect(doMerge1).to.throw(lm.MERGE_RESULT_IS_IDENTICAL)
+    expect(doMerge2).to.throw(lm.MERGE_RESULT_IS_IDENTICAL)
   })
 
   it('fail with same nested object', function () {
@@ -154,25 +154,27 @@ describe('merge objects', function () {
     const doMerge1 = () => lm.mergeOrFail(replicaA, replicaB)
     const doMerge2 = () => lm.mergeOrFail(replicaB, replicaA)
 
-    expect(doMerge1).to.throw(lm.MERGE_HAD_NO_DIFFERENCES_ERROR)
-    expect(doMerge2).to.throw(lm.MERGE_HAD_NO_DIFFERENCES_ERROR)
+    expect(doMerge1).to.throw(lm.MERGE_RESULT_IS_IDENTICAL)
+    expect(doMerge2).to.throw(lm.MERGE_RESULT_IS_IDENTICAL)
   })
 
   it('doesn\'t fail because nested object is different', function () {
     const replicaA = {
-      G: { name: 'valentin', age: 14, [MARKER]: { age: '2021-10-24' } },
-      [MARKER]: { H: '2021-10-24' }
+      [MARKER]: { G: '2021-10-24', U: '2021-10-24' },
+      G: { content: 'was geht!', [MARKER]: { content: '2021-10-24' } },
+      U: { content: 'hi', [MARKER]: { content: '2021-10-24' } }
     }
 
     const replicaB = {
-      G: { name: 'bob', age: 14, [MARKER]: { age: '2021-09-03' } },
-      [MARKER]: { H: '2021-10-24' }
+      [MARKER]: { G: '2021-10-24', U: '2021-10-24' },
+      G: { content: 'nix geht', [MARKER]: { content: '2021-10-25' } },
+      U: { content: 'hi', [MARKER]: { content: '2021-10-24' } }
     }
 
     const doMerge1 = () => lm.mergeOrFail(replicaA, replicaB)
     const doMerge2 = () => lm.mergeOrFail(replicaB, replicaA)
 
-    expect(doMerge1).to.not.throw(lm.MERGE_HAD_NO_DIFFERENCES_ERROR)
-    expect(doMerge2).to.not.throw(lm.MERGE_HAD_NO_DIFFERENCES_ERROR)
+    expect(doMerge1).to.not.throw(lm.MERGE_RESULT_IS_IDENTICAL)
+    expect(doMerge2).to.not.throw(lm.MERGE_RESULT_IS_IDENTICAL)
   })
 })

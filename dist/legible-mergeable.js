@@ -6,13 +6,13 @@
 
   const MERGEABLE_MARKER = '^lm';
 
-  const MERGE_HAD_NO_DIFFERENCES_ERROR = 'MERGE_HAD_NO_DIFFERENCES_ERROR';
+  const MERGE_RESULT_IS_IDENTICAL = 'MERGE_RESULT_IS_IDENTICAL';
   const WRONG_TYPE_GIVEN_EXPECTED_OBJECT = 'WRONG_TYPE_GIVEN_EXPECTED_OBJECT';
 
   var constants = /*#__PURE__*/Object.freeze({
     __proto__: null,
     MERGEABLE_MARKER: MERGEABLE_MARKER,
-    MERGE_HAD_NO_DIFFERENCES_ERROR: MERGE_HAD_NO_DIFFERENCES_ERROR,
+    MERGE_RESULT_IS_IDENTICAL: MERGE_RESULT_IS_IDENTICAL,
     WRONG_TYPE_GIVEN_EXPECTED_OBJECT: WRONG_TYPE_GIVEN_EXPECTED_OBJECT
   });
 
@@ -215,9 +215,15 @@
 
       // Call the merge function recursively if both properties are Mergeables
       if (isPropertyMergeable(input.a.state[key]) && isPropertyMergeable(input.b.state[key])) {
-        result[key] = mergeFunction(input.a.state[key], input.b.state[key], throwErrorIfSame);
+        try {
+          result[key] = mergeFunction(input.a.state[key], input.b.state[key], throwErrorIfSame);
 
-        docsHaveDifferences = true;
+          docsHaveDifferences = true;
+        } catch (error) {
+          if (error.message !== MERGE_RESULT_IS_IDENTICAL) {
+            throw error
+          }
+        }
 
         continue
       }
@@ -230,7 +236,7 @@
     }
 
     if (throwErrorIfSame && docsHaveDifferences === false) {
-      throw new Error(MERGE_HAD_NO_DIFFERENCES_ERROR)
+      throw new Error(MERGE_RESULT_IS_IDENTICAL)
     }
 
     return result

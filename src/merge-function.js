@@ -1,5 +1,5 @@
 import * as util from './util.js'
-import { MERGEABLE_MARKER as MARKER, MERGE_HAD_NO_DIFFERENCES_ERROR } from './constants.js'
+import { MERGEABLE_MARKER as MARKER, MERGE_RESULT_IS_IDENTICAL } from './constants.js'
 import { clone as cloneMergeable } from './api-functions.js'
 
 function isPropertyMergeable (property) {
@@ -76,9 +76,15 @@ export function mergeFunction (docA, docB, throwErrorIfSame) {
 
     // Call the merge function recursively if both properties are Mergeables
     if (isPropertyMergeable(input.a.state[key]) && isPropertyMergeable(input.b.state[key])) {
-      result[key] = mergeFunction(input.a.state[key], input.b.state[key], throwErrorIfSame)
+      try {
+        result[key] = mergeFunction(input.a.state[key], input.b.state[key], throwErrorIfSame)
 
-      docsHaveDifferences = true
+        docsHaveDifferences = true
+      } catch (error) {
+        if (error.message !== MERGE_RESULT_IS_IDENTICAL) {
+          throw error
+        }
+      }
 
       continue
     }
@@ -91,7 +97,7 @@ export function mergeFunction (docA, docB, throwErrorIfSame) {
   }
 
   if (throwErrorIfSame && docsHaveDifferences === false) {
-    throw new Error(MERGE_HAD_NO_DIFFERENCES_ERROR)
+    throw new Error(MERGE_RESULT_IS_IDENTICAL)
   }
 
   return result

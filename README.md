@@ -58,7 +58,7 @@ A few notes:
 
     lm.merge(mergeableA, mergeableB)
     lm.mergeOrFail(mergeableA, mergeableB)
-    // throws error with name lm.MERGE_HAD_NO_DIFFERENCES_ERROR if modifications don't differ
+    // throws error with name lm.MERGE_RESULT_IS_IDENTICAL if modifications don't differ
 
 ### Info
 
