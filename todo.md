@@ -33,22 +33,34 @@ however this has one problem: if the items are shared across different lists and
 
 ### option 2: keep the positions as nested mergeable in the list
 
-which would make things really weird cause a key would be tracked twice; once as object property and once its position.
+which would make things really weird cause a key would be tracked three times: modification date, position and the modification date of the position 🤯
+
+    {
+      1: {},
+      2: {},
+      ^lm: {
+        1: date,
+        2: date,
+        ^lm.positions': date,
+      },
+      ^lm.positions: {
+        1: pos,
+        2: pos,
+        ^lm: {
+          1: date,
+          2: date,
+        }
+      }
+    }
+
+---
+
 
 ### option 1 (not possible): ordered ids as own array in list as atomic value
 
-Problem: What happens to added properties from other clients while someone else overwrites the order? this problem makes it basically impossible to make the order a single atomic value.
+Problem: What happens to added properties from other clients while someone else overwrites the order?
 
-    const list = legibleMergeable.fromList([
-      1,
-      2,
-      {
-        ^lm: { 1: ..., '^lm.order': date },
-        ^lm.order: [1, 2]
-      },
-    ], { objectKey: 'id' })
-
-gets transformed to
+After a merge the order array would need to be refreshed: Deleted ids are removed and missing ids are pushed at the end, sorted deterministicly. Why not use `lm.order()` for that?
 
     {
       1,
@@ -68,6 +80,21 @@ functions need to be extended
 * set, needs to push key into order
 * delete, needs to delete key from order
 * base, return an array sorted by order property
+
+transforming from/to an actual array. only an array with objects as element can be transformed. because otherwise the identifier can't be saved.
+
+    const list = legibleMergeable.fromArray([
+      1,
+      2,
+      {
+        ^lm: { 1: ..., '^lm.order': date },
+        ^lm.order: [1, 2]
+      },
+    ], { keyPath: 'id', deleteKey: true })
+    
+the keyPath option is required above but optional below. if the business logic already makes sure that the key is set, there is no need to know it.
+
+    const list = legibleMergeable.toArray(lm, { keyPath: 'id' })
 
 ---
 
