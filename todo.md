@@ -27,9 +27,30 @@ options which wouldn't need to alter the merge function:
 
 ### option 3: put the position in the list element itself.
 
-the `id_key` would need to be saved inside the list anyway, it could also save a `position_key`, so the list knows where to look when ordering. user would need to use `insert` instead of `set` so a position is generated...
+user would need to use `insert` instead of `set` so a position is generated... ~~however this has one problem: if the items are shared across different lists and every list should have its own ordering.~~ this can be easily abstracted through referencing the content instead of including it as tree.
 
-however this has one problem: if the items are shared across different lists and every list should have its own ordering
+    {
+      1: { position: pos1 },
+      2: { position: pos2 },
+      ^lm: { 1: date1, 2: date2 },
+    }
+
+now this would somehow need to be parsed to
+
+    [
+        { id: 1, position: pos1 },
+        { id: 2, position: pos2 },
+    ]
+
+e.g. with
+
+    const list = lm.toArray(mergeable, { indexKey: 'id', positionKey: 'position' })
+
+the option positionKey is required to correctly order the array. the indexKey is optional if the business logic makes sure the elements have an unique identifier. however the indexKey does not need to exist inside the object. if an indexKey was passed, the array elements in the output get the property index of the mergeable as property with the key defined in `indexKey`.
+
+    const list = lm.fromArray(array, { indexKey: 'id', dropIndexKey: false })
+
+the option indexKey is required, because the value is needed for the new object keys. the option dropIndexKey is optional and by default true. if it is false, the property specified in indexKey is removed from the element (without tracking if the object is a mergeable).
 
 ### option 2: keep the positions as nested mergeable in the list
 
@@ -56,11 +77,11 @@ which would make things really weird cause a key would be tracked three times: m
 ---
 
 
-### option 1 (not possible): ordered ids as own array in list as atomic value
+### option 1 (somewhat hard to do deterministically): ordered ids as own array in list as atomic value
 
 Problem: What happens to added properties from other clients while someone else overwrites the order?
 
-After a merge the order array would need to be refreshed: Deleted ids are removed and missing ids are pushed at the end, sorted deterministicly. Why not use `lm.order()` for that?
+After a merge the order array would need to be refreshed: Deleted ids are removed and missing ids are pushed at the end, sorted deterministically. Why not just use `lm.order()` for that?
 
     {
       1,
@@ -74,14 +95,9 @@ every key that starts with the MARKER will get merged (except the MARKER itself)
 new helper functions
 
 * order, shortcut to `.set(tasks, '^lm.order', val)`. if no value is given, it returns the already existing order property
-
-functions need to be extended
-
-* set, needs to push key into order
-* delete, needs to delete key from order
-* base, return an array sorted by order property
-
-transforming from/to an actual array. only an array with objects as element can be transformed. because otherwise the identifier can't be saved.
+* push, needs to push key into order, deletePosition, needs to delete key from order (do we really need those functions)
+* toArray, return an array sorted by order property
+* fromArray
 
     const list = legibleMergeable.fromArray([
       1,
@@ -90,20 +106,6 @@ transforming from/to an actual array. only an array with objects as element can 
         ^lm: { 1: ..., '^lm.order': date },
         ^lm.order: [1, 2]
       },
-    ], { keyPath: 'id', deleteKey: true })
-    
-the keyPath option is required above but optional below. if the business logic already makes sure that the key is set, there is no need to know it.
+    ], { indexKey: 'id' })
 
-    const list = legibleMergeable.toArray(lm, { keyPath: 'id' })
-
----
-
-    arrayToObject (array, customIndex) {
-      return array.reduce((acc, value, i) => {
-        const key = customIndex == null ? i : customIndex
-
-        acc[value[key]] = value
-
-        return acc
-      }, {})
-    }
+    const list = legibleMergeable.toArray(lm, { indexKey: 'id' })

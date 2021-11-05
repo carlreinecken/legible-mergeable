@@ -68,6 +68,61 @@ describe('basics', function () {
       expect(() => lm.touch(null)).to.throw(lm.OBJECT_EXPECTED)
       expect(() => lm.touch('hi bob')).to.throw(lm.OBJECT_EXPECTED)
     })
+
+    it('size of mergeable', function () {
+      const mergeable = {
+        U: 'hi',
+        I: 'bye',
+        [MARKER]: { U: '2021-11-06', I: '2021-11-07' }
+      }
+
+      expect(lm.size(mergeable)).to.be.eql(2)
+    })
+  })
+
+  describe('modifications', function () {
+    it('set modifications', function () {
+      const mergeable = {}
+
+      const mods = lm.modifications(mergeable, { U: '2021-11-06', I: '2021-11-07' })
+
+      const expectedModifications = { U: '2021-11-06', I: '2021-11-07' }
+      expect(mergeable).to.be.eql({ [MARKER]: expectedModifications })
+      expect(mods).to.be.eql(expectedModifications)
+    })
+
+    it('get modifications', function () {
+      const mergeable = {
+        U: 'hi',
+        I: 'bye',
+        [MARKER]: { U: '2021-11-06', I: '2021-11-07' }
+      }
+
+      const mods = lm.modifications(mergeable)
+      const expectedModifications = { U: '2021-11-06', I: '2021-11-07' }
+
+      expect(mergeable).to.be.eql({
+        U: 'hi',
+        I: 'bye',
+        [MARKER]: { U: '2021-11-06', I: '2021-11-07' }
+      })
+      expect(mods).to.be.eql(expectedModifications)
+    })
+
+    it('get modifications of mergeable with no modifications', function () {
+      const mergeable = { U: 'hi', I: 'bye' }
+
+      const mods = lm.modifications(mergeable)
+
+      expect(mergeable).to.be.eql({ U: 'hi', I: 'bye' })
+      expect(mods).to.be.eql({})
+    })
+
+    it('get modifications of non object', function () {
+      const mods = lm.modifications('')
+
+      expect(mods).to.be.eql({})
+    })
   })
 
   describe('manipulate', function () {

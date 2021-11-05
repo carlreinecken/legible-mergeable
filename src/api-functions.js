@@ -38,10 +38,6 @@ export function drop (mergeable, key, options) {
   renew(mergeable, key, options)
 }
 
-export function size (mergeable) {
-  return Object.keys(mergeable).length
-}
-
 export function base (mergeable) {
   return transformMergeable(mergeable)
 }
@@ -56,10 +52,18 @@ export function clone (mergeable) {
   return transformed
 }
 
-export function modifications (mergeable) {
-  if (!util.isObject(mergeable) || !util.hasKey(mergeable, MERGEABLE_MARKER)) {
+export function modifications (mergeable, modifications) {
+  if (!util.isObject(mergeable)) {
     return {}
   }
 
-  return mergeable[MERGEABLE_MARKER]
+  if (util.isObject(modifications)) {
+    mergeable[MERGEABLE_MARKER] = modifications
+  }
+
+  if (util.hasKey(mergeable, MERGEABLE_MARKER)) {
+    return mergeable[MERGEABLE_MARKER]
+  }
+
+  return {}
 }

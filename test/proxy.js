@@ -50,7 +50,7 @@ describe('proxy', function () {
     }
 
     const subtaskValues = Object.values(subtasks)
-    const isAllDone = subtaskValues.filter(t => t.done).length === subtaskValues.length
+    const isAllDone = subtaskValues.filter(t => t.done).length === lm.size(subtasks)
 
     if (isAllDone) {
       task.done = true
