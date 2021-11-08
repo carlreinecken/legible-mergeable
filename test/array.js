@@ -54,14 +54,14 @@ describe('array', function () {
   })
 
   describe('array transform', function () {
-    it('mergeable to array with index key', function () {
+    it('mergeable to sorted array with index key', function () {
       const mergeable = {
         1: { pos: [8] },
         2: { pos: [2] },
         [MARKER]: { 1: '2021-10-30' }
       }
 
-      const array = lm.toArray(mergeable, { indexKey: 'id', positionKey: 'pos' })
+      const array = lm.sorted(mergeable, { indexKey: 'id', positionKey: 'pos' })
 
       expect(array).to.be.eql([
         { id: '2', pos: [2] },
@@ -69,14 +69,14 @@ describe('array', function () {
       ])
     })
 
-    it('mergeable to array without index key (no way to revert transformation)', function () {
+    it('mergeable to sorted array without index key (no way to revert transformation)', function () {
       const mergeable = {
         7: { [POS_KEY]: [24], this: 'that' },
         19: { key: '19', [POS_KEY]: [3, 1, 2] },
         [MARKER]: { 19: '2021-10-30' }
       }
 
-      const array = lm.toArray(mergeable)
+      const array = lm.sorted(mergeable)
 
       expect(array).to.be.eql([
         { key: '19', [POS_KEY]: [3, 1, 2] },
@@ -112,13 +112,13 @@ describe('array', function () {
       })
     })
 
-    it('to array and back without any markers', function () {
+    it('to sorted array and back without any markers', function () {
       const mergeable = {
         100: { id: 100, p: [7] },
         95: { id: 95, p: [3] }
       }
 
-      const array = lm.toArray(mergeable, { positionKey: 'p' })
+      const array = lm.sorted(mergeable, { positionKey: 'p' })
 
       const mergeableOfArray = lm.fromArray(array, 'id')
 
@@ -131,6 +131,12 @@ describe('array', function () {
         { id: 95, p: [3] },
         { id: 100, p: [7] }
       ])
+    })
+
+    it('array of non objects to mergeable', function () {
+      const mergeable = lm.fromArray(['H', 'U'])
+
+      expect(mergeable).to.be.eql({ H: 'H', U: 'U' })
     })
   })
 
@@ -175,8 +181,7 @@ describe('array', function () {
       lm.move(mergeable, 73, 51, { positionKey: 'p' })
 
       expect(mergeable[73].name).to.be.eql('Alice')
-      expect(mergeable[73].p[0]).to.be.eql(100)
-      expect(mergeable[73].p[1]).that.is.a('number')
+      expect(mergeable[73].p[0]).to.be.above(100)
     })
 
     it('move property to the same position', function () {
@@ -189,8 +194,7 @@ describe('array', function () {
       lm.move(mergeable, 73, 51, { positionKey: 'p' })
 
       expect(mergeable[73].name).to.be.eql('Alice')
-      expect(mergeable[73].p[0]).to.be.eql(100)
-      expect(mergeable[73].p[1]).that.is.a('number')
+      expect(mergeable[73].p[0]).to.be.above(100)
     })
 
     it('push new property to the end', function () {

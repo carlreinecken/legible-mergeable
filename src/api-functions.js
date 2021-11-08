@@ -1,6 +1,7 @@
 import * as util from './util.js'
-import { MERGEABLE_MARKER, WRONG_TYPE_GIVEN_EXPECTED_OBJECT } from './constants.js'
+import { MERGEABLE_MARKER } from './constants.js'
 import { transformMergeable } from './transform-mergeable.js'
+import { MergeableExpectedObjectError } from './errors.js'
 
 export function renew (mergeable, keys, options) {
   options = options || {}
@@ -16,7 +17,7 @@ export function renew (mergeable, keys, options) {
 
 export function touch (mergeable) {
   if (!util.isObject(mergeable)) {
-    throw new TypeError(WRONG_TYPE_GIVEN_EXPECTED_OBJECT)
+    throw new MergeableExpectedObjectError()
   }
 
   if (!util.hasKey(mergeable, MERGEABLE_MARKER)) {

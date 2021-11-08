@@ -4,13 +4,15 @@ import { mergeFunction } from './merge-function.js'
 import { createProxy } from './proxy.js'
 import * as apiFunctions from './api-functions.js'
 import * as apiArrayFunctions from './api-array-functions.js'
+import * as errors from './errors.js'
 
 export default {
   ...constants,
+  ...errors,
 
   merge (mergeableA, mergeableB) {
     if (!util.isObject(mergeableA) || !util.isObject(mergeableB)) {
-      throw new TypeError(constants.WRONG_TYPE_GIVEN_EXPECTED_OBJECT)
+      throw new errors.MergeableExpectedObjectError()
     }
 
     return mergeFunction(mergeableA, mergeableB).result
@@ -18,13 +20,13 @@ export default {
 
   mergeOrFail (mergeableA, mergeableB) {
     if (!util.isObject(mergeableA) || !util.isObject(mergeableB)) {
-      throw new TypeError(constants.WRONG_TYPE_GIVEN_EXPECTED_OBJECT)
+      throw new errors.MergeableExpectedObjectError()
     }
 
     const { result, isIdentical } = mergeFunction(mergeableA, mergeableB)
 
     if (isIdentical) {
-      throw new Error(constants.MERGE_RESULT_IS_IDENTICAL)
+      throw new errors.MergeResultIdenticalError()
     }
 
     return result

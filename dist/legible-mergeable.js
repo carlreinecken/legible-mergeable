@@ -5,27 +5,15 @@
 }(this, (function () { 'use strict';
 
   const MERGEABLE_MARKER = '^lm';
+
   // TODO: Evaluate where this needs to be implemented: Property keys starting
   // with the MARKER are ignored when iterating over the mergeable.
   const POSITION_KEY = MERGEABLE_MARKER + '.position';
 
-  const MERGE_RESULT_IS_IDENTICAL = 'MERGE_RESULT_IS_IDENTICAL';
-  const WRONG_TYPE_GIVEN_EXPECTED_OBJECT = 'WRONG_TYPE_GIVEN_EXPECTED_OBJECT';
-
-  const POSITION = {
-    DEFAULT_MIN: 0,
-    DEFAULT_MAX: parseInt('zzzzzz', 36),
-    IDENTIFIER_SEPARATOR: ' ',
-    INNER_RANGE_SIZE: 10000000
-  };
-
   var constants = /*#__PURE__*/Object.freeze({
     __proto__: null,
     MERGEABLE_MARKER: MERGEABLE_MARKER,
-    POSITION_KEY: POSITION_KEY,
-    MERGE_RESULT_IS_IDENTICAL: MERGE_RESULT_IS_IDENTICAL,
-    WRONG_TYPE_GIVEN_EXPECTED_OBJECT: WRONG_TYPE_GIVEN_EXPECTED_OBJECT,
-    POSITION: POSITION
+    POSITION_KEY: POSITION_KEY
   });
 
   function hasKey (object, key) {
@@ -47,6 +35,21 @@
 
   function hasMarker (property) {
     return hasKey(property, MERGEABLE_MARKER) && isObject(property[MERGEABLE_MARKER])
+  }
+
+  function swap (a, b) {
+    return [b, a]
+  }
+
+  /*
+   * Both the minimum and maximum are exclusive.
+   */
+  function randomInt (min, max) {
+    if (min > max) {
+      [min, max] = swap(min, max);
+    }
+
+    return Math.floor(Math.random() * (max - (min + 1))) + min + 1
   }
 
   function transformMergeable (dump, transformFn) {
@@ -79,6 +82,55 @@
     return result
   }
 
+  class MergeableError extends Error {
+    constructor (message) {
+      super(message);
+      this.name = this.constructor.name;
+    }
+  }
+
+  class MergeResultIdenticalError extends MergeableError {
+    constructor () {
+      super('Result of merge is identical.');
+    }
+  }
+
+  class MergeableExpectedObjectError extends MergeableError {
+    constructor () {
+      super('Wrong type given, expected value of type object.');
+    }
+  }
+
+  class KeyNotFoundInMergableError extends MergeableError {
+    constructor (payload) {
+      super(`Could not find id ${payload.key} in mergeable.`);
+      this.payload = payload;
+    }
+  }
+
+  class PositionMissingInMergableError extends MergeableError {
+    constructor (payload) {
+      super(`Position key ${payload.positionKey} is missing on property.`);
+      this.payload = payload;
+    }
+  }
+
+  class PositionHasNoRoomError extends MergeableError {
+    constructor () {
+      super('Failed to generate new position, no room left.');
+    }
+  }
+
+  var errors = /*#__PURE__*/Object.freeze({
+    __proto__: null,
+    MergeableError: MergeableError,
+    MergeResultIdenticalError: MergeResultIdenticalError,
+    MergeableExpectedObjectError: MergeableExpectedObjectError,
+    KeyNotFoundInMergableError: KeyNotFoundInMergableError,
+    PositionMissingInMergableError: PositionMissingInMergableError,
+    PositionHasNoRoomError: PositionHasNoRoomError
+  });
+
   function renew (mergeable, keys, options) {
     options = options || {};
 
@@ -93,7 +145,7 @@
 
   function touch (mergeable) {
     if (!isObject(mergeable)) {
-      throw new TypeError(WRONG_TYPE_GIVEN_EXPECTED_OBJECT)
+      throw new MergeableExpectedObjectError()
     }
 
     if (!hasKey(mergeable, MERGEABLE_MARKER)) {
@@ -285,40 +337,74 @@
     })
   }
 
-  function generate (prevPos, nextPos) {
-    prevPos = prevPos || [];
-    nextPos = nextPos || [];
+  const MAX_SIZE = maxSizeAtDepth(0);
+  const MIN_SIZE = 0;
+  const SAFE_ZONE = Math.pow(2, 10);
+  const SAFE_ZONE_BORDER_BUFFER_FACTOR = 0.25;
+  const SAFE_ZONE_SPACE_BUFFER_FACTOR = 0.75;
 
-    if (prevPos.length > 0 && nextPos.length > 0 && compare(prevPos, nextPos) === 0) {
-      throw new Error('Could not generate new position, no space available.')
+  function maxSizeAtDepth (depth) {
+    // The MAX SIZE increases exponentially with every additional level of depth
+    return Math.pow(2, 15 + depth)
+  }
+
+  function generate (previous, next, depth) {
+    depth = depth || 0;
+    previous = previous || [MIN_SIZE];
+    next = next || [maxSizeAtDepth(depth)];
+
+    const compared = compare(previous, next);
+
+    if (previous.length > 0 && next.length > 0 && compared === 0) {
+      throw new PositionHasNoRoomError()
     }
 
-    const prevPosHead = (prevPos.length > 0) ? prevPos[0] : POSITION.DEFAULT_MIN;
-    const nextPosHead = (nextPos.length > 0) ? nextPos[0] : POSITION.DEFAULT_MAX;
+    // In depth 0 compare the positions and switch them if necessary (previous should be smaller)
+    if (compared === 1 && depth === 0) {
+      [previous, next] = swap(previous, next);
+    }
 
-    const diff = Math.abs(prevPosHead - nextPosHead);
-    let newPos = [prevPosHead];
+    const previousHead = (previous.length > 0) ? previous[0] : MIN_SIZE;
+    const nextHead = (next.length > 0) ? next[0] : maxSizeAtDepth(depth);
 
-    if (diff < POSITION.INNER_RANGE_SIZE * 2) {
-      newPos = newPos.concat(generate(prevPos.slice(1), nextPos.slice(1)));
+    const diff = Math.abs(previousHead - nextHead);
+
+    // If the zone size is not big enough, it creates a new depth level
+    if (diff < SAFE_ZONE) {
+      const headsAreSame = previousHead === nextHead;
+
+      // If the heads are different the next depth does not need to consider
+      // the other segments of the nextPosition. E.g. [0,6] & [1,4] should
+      // generate a number between [0,6]-[0,MAX] not between [0,4]-[0,8].
+      next = headsAreSame ? next.slice(1) : [];
+      previous = previous.slice(1);
+
+      const generatedSegments = generate(previous, next, depth + 1);
+
+      return [previousHead, ...generatedSegments]
+    }
+
+    let min, max;
+
+    // The boundary allocation strategy is decided by the eveness of the depth.
+    // It creates a safe zone either from the left or right boundary. The safe
+    // zone is further narrowed down by 25% from the start and 25% to the end
+    // of the safe zone.
+    if (depth % 2 === 0) {
+      // If the depth is even, it will insert at the left side of the sequence.
+      min = previousHead + SAFE_ZONE * SAFE_ZONE_BORDER_BUFFER_FACTOR;
+      max = previousHead + SAFE_ZONE * SAFE_ZONE_SPACE_BUFFER_FACTOR;
     } else {
-      let min = prevPosHead + POSITION.INNER_RANGE_SIZE * 0.5;
-      let max = prevPosHead + POSITION.INNER_RANGE_SIZE * 1.5;
-
-      if (min > max) {
-        const temp = min;
-        min = max;
-        max = temp;
-      }
-
-      newPos[0] = Math.floor(Math.random() * (max - (min + 1))) + min + 1;
+      // If the depth is odd, it will insert at the right side of the sequence.
+      min = nextHead - SAFE_ZONE * SAFE_ZONE_SPACE_BUFFER_FACTOR;
+      max = nextHead - SAFE_ZONE * SAFE_ZONE_BORDER_BUFFER_FACTOR;
     }
 
-    return newPos
+    return [randomInt(min, max)]
   }
 
   function compare (a, b) {
-    const next = x => x.length > 1 ? x.slice(1) : [POSITION.DEFAULT_MIN];
+    const next = x => x.length > 1 ? x.slice(1) : [MIN_SIZE];
     const diff = (a[0] || 0) - (b[0] || 0);
 
     if (diff === 0 && (a.length > 1 || b.length > 1)) {
@@ -333,7 +419,7 @@
   }
 
   function next (positions, positionMark) {
-    let result = [POSITION.DEFAULT_MAX];
+    let result = [MAX_SIZE];
 
     for (const cursor of positions) {
       const cursorIsBiggerThanMark = compare(cursor, positionMark) === 1;
@@ -360,14 +446,14 @@
     const mergeable = {};
 
     for (const element of array) {
-      if (!isObject(element)) {
+      if (isObject(element) && !indexKey) {
         continue
       }
 
-      const key = element[indexKey];
+      const key = indexKey ? element[indexKey] : element;
       mergeable[key] = element;
 
-      if (dropIndexKey) {
+      if (indexKey && dropIndexKey) {
         delete mergeable[key][indexKey];
       }
     }
@@ -376,7 +462,7 @@
   }
 
   /**
-   * Transforms the `mergeable` to an ordered array with its elements. The order
+   * Transforms the `mergeable` to an sorted array with its elements. The order
    * is defined by the positions of the elements. The position is expected to be
    * on the positionKey or fallbacks to the default. The marker is ignored, if
    * the mergeable should be rebuild later, the modifications need to be preserved
@@ -384,7 +470,7 @@
    * element itself, otherwise the original mergeable can't be rebuild. This isn't
    * needed if the key is already inside the element.
    */
-  function toArray (mergeable, options) {
+  function sorted (mergeable, options) {
     options = options || {};
     const indexKey = options.indexKey;
     const positionKey = options.positionKey || POSITION_KEY;
@@ -545,7 +631,7 @@
 
     if (afterKey != null) {
       if (!hasKey(mergeable, afterKey)) {
-        throw new Error(`Could not find id ${afterKey} in mergeable.`)
+        throw new KeyNotFoundInMergableError({ key: afterKey })
       }
 
       afterPosition = mergeable[afterKey][positionKey];
@@ -583,33 +669,28 @@
     const positionKey = options.positionKey || POSITION_KEY;
 
     const lastElement = last(mergeable, options);
-    const afterPosition = lastElement.position;
+    const afterPosition = lastElement[positionKey];
     const position = generate(afterPosition, null);
 
     set(mergeable[key], positionKey, position, options);
   }
 
   /**
-   * This function does not exist, because of two reasons:
-   *   1. With `move(mergeable, key, null)` the same is achievable
-   *   2. The position generating algorithm starts using the lower numbers first
-   *      so it would find itself quickly in nested positions. It is strongly
-   *      recommended to only push new elements and just reverse the order later.
+   * This function does not exist (yet), because with
+   * `move(mergeable, key, null)` the same is achievable.
    */
   // function unshift () {}
 
   /* =================== NOT EXPORTED FUNCTIONS =================== */
 
   function sort (positionKey, array) {
-    array.sort((a, b) => {
+    return array.sort((a, b) => {
       if (!hasKey(a, positionKey) || !hasKey(b, positionKey)) {
-        throw new Error(`Sorting failed. Position key ${positionKey} is missing on element.`)
+        throw new PositionMissingInMergableError({ positionKey })
       }
 
       return compare(a[positionKey], b[positionKey])
-    });
-
-    return array
+    })
   }
 
   function getAllPositionsExcept (mergeable, excludedPosition, positionKey) {
@@ -621,7 +702,7 @@
         }
 
         // Exclude the current position
-        if (excludedPosition && position.toString() !== excludedPosition.toString()) {
+        if (excludedPosition && position && position.toString() !== excludedPosition.toString()) {
           return true
         }
 
@@ -632,7 +713,7 @@
   var apiArrayFunctions = /*#__PURE__*/Object.freeze({
     __proto__: null,
     fromArray: fromArray,
-    toArray: toArray,
+    sorted: sorted,
     size: size,
     filter: filter,
     map: map,
@@ -646,10 +727,11 @@
 
   var main = {
     ...constants,
+    ...errors,
 
     merge (mergeableA, mergeableB) {
       if (!isObject(mergeableA) || !isObject(mergeableB)) {
-        throw new TypeError(WRONG_TYPE_GIVEN_EXPECTED_OBJECT)
+        throw new MergeableExpectedObjectError()
       }
 
       return mergeFunction(mergeableA, mergeableB).result
@@ -657,13 +739,13 @@
 
     mergeOrFail (mergeableA, mergeableB) {
       if (!isObject(mergeableA) || !isObject(mergeableB)) {
-        throw new TypeError(WRONG_TYPE_GIVEN_EXPECTED_OBJECT)
+        throw new MergeableExpectedObjectError()
       }
 
       const { result, isIdentical } = mergeFunction(mergeableA, mergeableB);
 
       if (isIdentical) {
-        throw new Error(MERGE_RESULT_IS_IDENTICAL)
+        throw new MergeResultIdenticalError()
       }
 
       return result

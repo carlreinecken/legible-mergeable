@@ -126,7 +126,7 @@ describe('merge objects', function () {
     expect(lm.merge(docB, docB)).to.eql(docB)
   })
 
-  xit('tree', function () {
+  xit('complex tree', function () {
   })
 
   it('fail with identical object', function () {
@@ -136,8 +136,8 @@ describe('merge objects', function () {
     const doMerge1 = () => lm.mergeOrFail(replicaA, replicaB)
     const doMerge2 = () => lm.mergeOrFail(replicaB, replicaA)
 
-    expect(doMerge1).to.throw(lm.MERGE_RESULT_IS_IDENTICAL)
-    expect(doMerge2).to.throw(lm.MERGE_RESULT_IS_IDENTICAL)
+    expect(doMerge1).to.throw(lm.MergeResultIdenticalError)
+    expect(doMerge2).to.throw(lm.MergeResultIdenticalError)
   })
 
   it('fail with identical nested object', function () {
@@ -154,8 +154,8 @@ describe('merge objects', function () {
     const doMerge1 = () => lm.mergeOrFail(replicaA, replicaB)
     const doMerge2 = () => lm.mergeOrFail(replicaB, replicaA)
 
-    expect(doMerge1).to.throw(lm.MERGE_RESULT_IS_IDENTICAL)
-    expect(doMerge2).to.throw(lm.MERGE_RESULT_IS_IDENTICAL)
+    expect(doMerge1).to.throw(lm.MergeResultIdenticalError)
+    expect(doMerge2).to.throw(lm.MergeResultIdenticalError)
   })
 
   it('doesn\'t fail because nested object is different', function () {
@@ -174,8 +174,8 @@ describe('merge objects', function () {
     const doMerge1 = () => lm.mergeOrFail(replicaA, replicaB)
     const doMerge2 = () => lm.mergeOrFail(replicaB, replicaA)
 
-    expect(doMerge1).to.not.throw(lm.MERGE_RESULT_IS_IDENTICAL)
-    expect(doMerge2).to.not.throw(lm.MERGE_RESULT_IS_IDENTICAL)
+    expect(doMerge1).to.not.throw(lm.MergeResultIdenticalError)
+    expect(doMerge2).to.not.throw(lm.MergeResultIdenticalError)
   })
 
   it('doesn\'t fail when nested object is identical but parent changed', function () {

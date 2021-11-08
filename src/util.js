@@ -20,3 +20,18 @@ export function uniquenizeArray (array) {
 export function hasMarker (property) {
   return hasKey(property, MERGEABLE_MARKER) && isObject(property[MERGEABLE_MARKER])
 }
+
+export function swap (a, b) {
+  return [b, a]
+}
+
+/*
+ * Both the minimum and maximum are exclusive.
+ */
+export function randomInt (min, max) {
+  if (min > max) {
+    [min, max] = swap(min, max)
+  }
+
+  return Math.floor(Math.random() * (max - (min + 1))) + min + 1
+}

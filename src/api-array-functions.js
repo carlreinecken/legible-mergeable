@@ -2,6 +2,7 @@ import * as util from './util.js'
 import { MERGEABLE_MARKER, POSITION_KEY } from './constants.js'
 import * as apiFunctions from './api-functions.js'
 import * as positionFunctions from './position-functions.js'
+import { KeyNotFoundInMergableError, PositionMissingInMergableError } from './errors.js'
 
 /**
  * Transforms an `array` of objects to a mergeable. The elements are expected
@@ -16,14 +17,14 @@ export function fromArray (array, indexKey, options) {
   const mergeable = {}
 
   for (const element of array) {
-    if (!util.isObject(element)) {
+    if (util.isObject(element) && !indexKey) {
       continue
     }
 
-    const key = element[indexKey]
+    const key = indexKey ? element[indexKey] : element
     mergeable[key] = element
 
-    if (dropIndexKey) {
+    if (indexKey && dropIndexKey) {
       delete mergeable[key][indexKey]
     }
   }
@@ -32,7 +33,7 @@ export function fromArray (array, indexKey, options) {
 }
 
 /**
- * Transforms the `mergeable` to an ordered array with its elements. The order
+ * Transforms the `mergeable` to an sorted array with its elements. The order
  * is defined by the positions of the elements. The position is expected to be
  * on the positionKey or fallbacks to the default. The marker is ignored, if
  * the mergeable should be rebuild later, the modifications need to be preserved
@@ -40,7 +41,7 @@ export function fromArray (array, indexKey, options) {
  * element itself, otherwise the original mergeable can't be rebuild. This isn't
  * needed if the key is already inside the element.
  */
-export function toArray (mergeable, options) {
+export function sorted (mergeable, options) {
   options = options || {}
   const indexKey = options.indexKey
   const positionKey = options.positionKey || POSITION_KEY
@@ -201,7 +202,7 @@ export function move (mergeable, key, afterKey, options) {
 
   if (afterKey != null) {
     if (!util.hasKey(mergeable, afterKey)) {
-      throw new Error(`Could not find id ${afterKey} in mergeable.`)
+      throw new KeyNotFoundInMergableError({ key: afterKey })
     }
 
     afterPosition = mergeable[afterKey][positionKey]
@@ -239,33 +240,28 @@ export function push (mergeable, key, options) {
   const positionKey = options.positionKey || POSITION_KEY
 
   const lastElement = last(mergeable, options)
-  const afterPosition = lastElement.position
+  const afterPosition = lastElement[positionKey]
   const position = positionFunctions.generate(afterPosition, null)
 
   apiFunctions.set(mergeable[key], positionKey, position, options)
 }
 
 /**
- * This function does not exist, because of two reasons:
- *   1. With `move(mergeable, key, null)` the same is achievable
- *   2. The position generating algorithm starts using the lower numbers first
- *      so it would find itself quickly in nested positions. It is strongly
- *      recommended to only push new elements and just reverse the order later.
+ * This function does not exist (yet), because with
+ * `move(mergeable, key, null)` the same is achievable.
  */
 // function unshift () {}
 
 /* =================== NOT EXPORTED FUNCTIONS =================== */
 
 function sort (positionKey, array) {
-  array.sort((a, b) => {
+  return array.sort((a, b) => {
     if (!util.hasKey(a, positionKey) || !util.hasKey(b, positionKey)) {
-      throw new Error(`Sorting failed. Position key ${positionKey} is missing on element.`)
+      throw new PositionMissingInMergableError({ positionKey })
     }
 
     return positionFunctions.compare(a[positionKey], b[positionKey])
   })
-
-  return array
 }
 
 function getAllPositionsExcept (mergeable, excludedPosition, positionKey) {
@@ -277,7 +273,7 @@ function getAllPositionsExcept (mergeable, excludedPosition, positionKey) {
       }
 
       // Exclude the current position
-      if (excludedPosition && position.toString() !== excludedPosition.toString()) {
+      if (excludedPosition && position && position.toString() !== excludedPosition.toString()) {
         return true
       }
 
