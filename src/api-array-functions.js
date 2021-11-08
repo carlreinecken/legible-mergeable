@@ -257,6 +257,7 @@ export function push (mergeable, key, options) {
 function sort (positionKey, array) {
   return array.sort((a, b) => {
     if (!util.hasKey(a, positionKey) || !util.hasKey(b, positionKey)) {
+      // TODO: be more gentle, rather sort by key as fallback. but where to get it?!
       throw new PositionMissingInMergableError({ positionKey })
     }
 
