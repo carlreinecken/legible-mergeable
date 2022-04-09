@@ -33,7 +33,7 @@ export function fromArray (array, indexKey, options) {
 }
 
 /**
- * Transforms the `mergeable` to an sorted array with its elements. The order
+ * Transforms the `mergeable` to a sorted array with its elements. The order
  * is defined by the positions of the elements. The position is expected to be
  * on the positionKey or fallbacks to the default. The marker is ignored, if
  * the mergeable should be rebuild later, the modifications need to be preserved
@@ -257,7 +257,9 @@ export function push (mergeable, key, options) {
 function sort (positionKey, array) {
   return array.sort((a, b) => {
     if (!util.hasKey(a, positionKey) || !util.hasKey(b, positionKey)) {
-      // TODO: be more gentle, rather sort by key as fallback. but where to get it?!
+      // TODO: be more gentle, rather sort by a key as fallback.
+      //       but where to get it?! the sorted function could have an option
+      //       like `fallbackSortKey`, but what if the key is still not there?
       throw new PositionMissingInMergableError({ positionKey })
     }
 

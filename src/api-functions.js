@@ -53,6 +53,10 @@ export function clone (mergeable) {
   return transformed
 }
 
+/**
+ * It returns the modifications of the mergeable. If modifications are passed
+ * as argument they get set on the mergeable.
+ */
 export function modifications (mergeable, modifications) {
   if (!util.isObject(mergeable)) {
     return {}
