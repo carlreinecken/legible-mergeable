@@ -78,6 +78,28 @@ describe('basics', function () {
 
       expect(lm.size(mergeable)).to.be.eql(2)
     })
+
+    it('keys', function () {
+      const item = {
+        id: 22,
+        name: 'Edward',
+        price: 45,
+        [MARKER]: { age: '2022-04-19', id: '2022-04-19' }
+      }
+
+      expect(lm.keys(item)).to.be.eql(['id', 'name', 'price'])
+    })
+
+    it('compare', function () {
+      const itemA = { A: 'aa', B: 'bb', C: 'cc' }
+      const itemB = { B: 'bb', D: 'dd', [MARKER]: {} }
+
+      const result1 = { missing: ['A', 'C'], added: ['D'] }
+      const result2 = { missing: ['D'], added: ['A', 'C'] }
+
+      expect(lm.compare(itemA, itemB)).to.be.eql(result1)
+      expect(lm.compare(itemB, itemA)).to.be.eql(result2)
+    })
   })
 
   describe('modifications', function () {

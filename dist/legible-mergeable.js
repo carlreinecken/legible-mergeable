@@ -181,6 +181,33 @@
     return transformed
   }
 
+  /**
+   * Just return all keys except of course the marker
+   */
+  function keys (mergeable) {
+    return Object.keys(mergeable).filter((key) => key !== MERGEABLE_MARKER)
+  }
+
+  /**
+   * Compares a `mergeableA` with a `mergeableB` and returns an array of keys for
+   * missing and added elements. The modification marker is ignored and skipped.
+   */
+  function compare (mergeableA, mergeableB) {
+    const keysA = keys(mergeableA);
+    const setA = new Set(keysA);
+    const keysB = keys(mergeableB);
+    const setB = new Set(keysB);
+
+    return {
+      missing: keysA.filter((key) => !setB.has(key)),
+      added: keysB.filter((key) => !setA.has(key))
+    }
+  }
+
+  /**
+   * It returns the modifications of the mergeable. If modifications are passed
+   * as argument they get set on the mergeable.
+   */
   function modifications (mergeable, modifications) {
     if (!isObject(mergeable)) {
       return {}
@@ -205,6 +232,8 @@
     drop: drop,
     base: base,
     clone: clone,
+    keys: keys,
+    compare: compare,
     modifications: modifications
   });
 
@@ -353,7 +382,7 @@
     previous = previous || [MIN_SIZE];
     next = next || [maxSizeAtDepth(depth)];
 
-    const compared = compare(previous, next);
+    const compared = compare$1(previous, next);
 
     if (previous.length > 0 && next.length > 0 && compared === 0) {
       throw new PositionHasNoRoomError()
@@ -403,12 +432,12 @@
     return [randomInt(min, max)]
   }
 
-  function compare (a, b) {
+  function compare$1 (a, b) {
     const next = x => x.length > 1 ? x.slice(1) : [MIN_SIZE];
     const diff = (a[0] || 0) - (b[0] || 0);
 
     if (diff === 0 && (a.length > 1 || b.length > 1)) {
-      return compare(next(a), next(b))
+      return compare$1(next(a), next(b))
     } else if (diff > 0) {
       return 1
     } else if (diff < 0) {
@@ -422,8 +451,8 @@
     let result = [MAX_SIZE];
 
     for (const cursor of positions) {
-      const cursorIsBiggerThanMark = compare(cursor, positionMark) === 1;
-      const cursorIsLessThanResult = compare(cursor, result) === -1;
+      const cursorIsBiggerThanMark = compare$1(cursor, positionMark) === 1;
+      const cursorIsLessThanResult = compare$1(cursor, result) === -1;
 
       if (cursorIsBiggerThanMark && cursorIsLessThanResult) {
         result = cursor;
@@ -462,7 +491,7 @@
   }
 
   /**
-   * Transforms the `mergeable` to an sorted array with its elements. The order
+   * Transforms the `mergeable` to a sorted array with its elements. The order
    * is defined by the positions of the elements. The position is expected to be
    * on the positionKey or fallbacks to the default. The marker is ignored, if
    * the mergeable should be rebuild later, the modifications need to be preserved
@@ -592,7 +621,7 @@
         return accumulator
       }
 
-      const smallerStays = compare(accumulator[positionKey], element[positionKey]) === -1;
+      const smallerStays = compare$1(accumulator[positionKey], element[positionKey]) === -1;
       return smallerStays ? accumulator : element
     })
   }
@@ -611,7 +640,7 @@
         return accumulator
       }
 
-      const highestStays = compare(accumulator[positionKey], element[positionKey]) === 1;
+      const highestStays = compare$1(accumulator[positionKey], element[positionKey]) === 1;
       return highestStays ? accumulator : element
     })
   }
@@ -686,10 +715,13 @@
   function sort (positionKey, array) {
     return array.sort((a, b) => {
       if (!hasKey(a, positionKey) || !hasKey(b, positionKey)) {
+        // TODO: be more gentle, rather sort by a key as fallback.
+        //       but where to get it?! the sorted function could have an option
+        //       like `fallbackSortKey`, but what if the key is still not there?
         throw new PositionMissingInMergableError({ positionKey })
       }
 
-      return compare(a[positionKey], b[positionKey])
+      return compare$1(a[positionKey], b[positionKey])
     })
   }
 

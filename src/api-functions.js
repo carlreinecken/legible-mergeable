@@ -54,6 +54,29 @@ export function clone (mergeable) {
 }
 
 /**
+ * Just return all keys except of course the marker
+ */
+export function keys (mergeable) {
+  return Object.keys(mergeable).filter((key) => key !== MERGEABLE_MARKER)
+}
+
+/**
+ * Compares a `mergeableA` with a `mergeableB` and returns an array of keys for
+ * missing and added elements. The modification marker is ignored and skipped.
+ */
+export function compare (mergeableA, mergeableB) {
+  const keysA = keys(mergeableA)
+  const setA = new Set(keysA)
+  const keysB = keys(mergeableB)
+  const setB = new Set(keysB)
+
+  return {
+    missing: keysA.filter((key) => !setB.has(key)),
+    added: keysB.filter((key) => !setA.has(key))
+  }
+}
+
+/**
  * It returns the modifications of the mergeable. If modifications are passed
  * as argument they get set on the mergeable.
  */
