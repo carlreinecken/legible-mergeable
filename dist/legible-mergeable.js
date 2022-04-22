@@ -182,26 +182,32 @@
   }
 
   /**
-   * Just return all keys except of course the marker
+   * Return all keys except (of course) the MERGEABLE_MARKER.
    */
   function keys (mergeable) {
     return Object.keys(mergeable).filter((key) => key !== MERGEABLE_MARKER)
   }
 
   /**
-   * Compares a `mergeableA` with a `mergeableB` and returns an array of keys for
-   * missing and added elements. The modification marker is ignored and skipped.
+   * Return all keys which are not present in the object but have
+   * modifications. These keys were removed in the past and are kept
+   * for merges with mergeables which may not know that they are deleted.
    */
-  function compare (mergeableA, mergeableB) {
-    const keysA = keys(mergeableA);
-    const setA = new Set(keysA);
-    const keysB = keys(mergeableB);
-    const setB = new Set(keysB);
+  function tombstones (mergeable) {
+    return Object.keys(modifications(mergeable))
+      .filter((key) => !hasKey(mergeable, key))
+  }
 
-    return {
-      missing: keysA.filter((key) => !setB.has(key)),
-      added: keysB.filter((key) => !setA.has(key))
+  /**
+   * Checks if the mergeable has the given key.
+   * It returns null if it is checked for the modification MERGEABLE_MARKER.
+   */
+  function has (mergeable, key) {
+    if (key === MERGEABLE_MARKER) {
+      return null
     }
+
+    return hasKey(mergeable, key)
   }
 
   /**
@@ -233,7 +239,8 @@
     base: base,
     clone: clone,
     keys: keys,
-    compare: compare,
+    tombstones: tombstones,
+    has: has,
     modifications: modifications
   });
 
@@ -382,7 +389,7 @@
     previous = previous || [MIN_SIZE];
     next = next || [maxSizeAtDepth(depth)];
 
-    const compared = compare$1(previous, next);
+    const compared = compare(previous, next);
 
     if (previous.length > 0 && next.length > 0 && compared === 0) {
       throw new PositionHasNoRoomError()
@@ -432,12 +439,12 @@
     return [randomInt(min, max)]
   }
 
-  function compare$1 (a, b) {
+  function compare (a, b) {
     const next = x => x.length > 1 ? x.slice(1) : [MIN_SIZE];
     const diff = (a[0] || 0) - (b[0] || 0);
 
     if (diff === 0 && (a.length > 1 || b.length > 1)) {
-      return compare$1(next(a), next(b))
+      return compare(next(a), next(b))
     } else if (diff > 0) {
       return 1
     } else if (diff < 0) {
@@ -451,8 +458,8 @@
     let result = [MAX_SIZE];
 
     for (const cursor of positions) {
-      const cursorIsBiggerThanMark = compare$1(cursor, positionMark) === 1;
-      const cursorIsLessThanResult = compare$1(cursor, result) === -1;
+      const cursorIsBiggerThanMark = compare(cursor, positionMark) === 1;
+      const cursorIsLessThanResult = compare(cursor, result) === -1;
 
       if (cursorIsBiggerThanMark && cursorIsLessThanResult) {
         result = cursor;
@@ -621,7 +628,7 @@
         return accumulator
       }
 
-      const smallerStays = compare$1(accumulator[positionKey], element[positionKey]) === -1;
+      const smallerStays = compare(accumulator[positionKey], element[positionKey]) === -1;
       return smallerStays ? accumulator : element
     })
   }
@@ -640,7 +647,7 @@
         return accumulator
       }
 
-      const highestStays = compare$1(accumulator[positionKey], element[positionKey]) === 1;
+      const highestStays = compare(accumulator[positionKey], element[positionKey]) === 1;
       return highestStays ? accumulator : element
     })
   }
@@ -686,12 +693,16 @@
     // options = options || {}
     // const positionKey = options.positionKey || POSITION_KEY
     // TODO: implement reposition()
+    // TODO: this could take over the functionality that push() currently has: only
+    //       generate a position for a given key. but then this would be
+    //       opinionated to "reposition" at the end...
   }
 
   /**
    * Generates a position on the mergeable element with the given key, which will
    * be located after the highest position. The positions are expected to be under
    * the name given in the option `positionKey` or it fallbacks to the default.
+   * TODO: why the f* did i make this weird that no value can be passed?
    */
   function push (mergeable, key, options) {
     options = options || {};
@@ -721,7 +732,7 @@
         throw new PositionMissingInMergableError({ positionKey })
       }
 
-      return compare$1(a[positionKey], b[positionKey])
+      return compare(a[positionKey], b[positionKey])
     })
   }
 

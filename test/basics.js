@@ -83,22 +83,36 @@ describe('basics', function () {
       const item = {
         id: 22,
         name: 'Edward',
-        price: 45,
+        age: 45,
         [MARKER]: { age: '2022-04-19', id: '2022-04-19' }
       }
 
-      expect(lm.keys(item)).to.be.eql(['id', 'name', 'price'])
+      expect(lm.keys(item)).to.be.eql(['id', 'name', 'age'])
     })
 
-    it('compare', function () {
-      const itemA = { A: 'aa', B: 'bb', C: 'cc' }
-      const itemB = { B: 'bb', D: 'dd', [MARKER]: {} }
+    it('has', function () {
+      const item = {
+        name: 'Lancester',
+        distance: 11,
+        [MARKER]: { age: '2022-04-19' }
+      }
 
-      const result1 = { missing: ['A', 'C'], added: ['D'] }
-      const result2 = { missing: ['D'], added: ['A', 'C'] }
+      expect(lm.has(item, 'name')).to.be.true
+      expect(lm.has(item, 'distance')).to.be.true
+      expect(lm.has(item, 'age')).to.be.false
+      expect(lm.has(item, 'foo')).to.be.false
+      expect(lm.has(item, MARKER)).to.be.null
+    })
 
-      expect(lm.compare(itemA, itemB)).to.be.eql(result1)
-      expect(lm.compare(itemB, itemA)).to.be.eql(result2)
+    it('tombstones', function () {
+      const item = {
+        A: 'aa',
+        B: 'bb',
+        C: 'cc',
+        [MARKER]: { C: '2022-04-20', D: '2022-04-23' }
+      }
+
+      expect(lm.tombstones(item)).to.be.eql(['D'])
     })
   })
 

@@ -228,12 +228,16 @@ export function reposition (mergeable, key, options) {
   // options = options || {}
   // const positionKey = options.positionKey || POSITION_KEY
   // TODO: implement reposition()
+  // TODO: this could take over the functionality that push() currently has: only
+  //       generate a position for a given key. but then this would be
+  //       opinionated to "reposition" at the end...
 }
 
 /**
  * Generates a position on the mergeable element with the given key, which will
  * be located after the highest position. The positions are expected to be under
  * the name given in the option `positionKey` or it fallbacks to the default.
+ * TODO: why the f* did i make this weird that no value can be passed?
  */
 export function push (mergeable, key, options) {
   options = options || {}
