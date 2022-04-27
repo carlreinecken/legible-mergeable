@@ -8,6 +8,7 @@ import * as errors from './errors.js'
 
 export default {
   ...constants,
+
   ...errors,
 
   merge (mergeableA, mergeableB) {
@@ -30,6 +31,17 @@ export default {
     }
 
     return result
+  },
+
+  mergeForDetails (mergeableA, mergeableB, options) {
+    options = options || { includeRecoverOperation: false }
+    options.detailed = true
+
+    if (!util.isObject(mergeableA) || !util.isObject(mergeableB)) {
+      throw new errors.MergeableExpectedObjectError()
+    }
+
+    return mergeFunction(mergeableA, mergeableB, options)
   },
 
   createProxy,

@@ -1,5 +1,5 @@
 import * as util from './util.js'
-import { MERGEABLE_MARKER as MARKER } from './constants.js'
+import { OPERATIONS, MERGEABLE_MARKER as MARKER } from './constants.js'
 import { clone as cloneMergeable } from './api-functions.js'
 
 function isPropertyMergeable (property) {
@@ -29,8 +29,32 @@ function setProperty (resultRef, key, state) {
   }
 }
 
-export function mergeFunction (docA, docB) {
+function setOperations (operationsRef, key, state, otherState, otherMod, options) {
+  if (!options.detailed) {
+    return
+  }
+
+  if (util.hasKey(state, key)) {
+    if (util.hasKey(otherState, key)) {
+      operationsRef[key] = OPERATIONS.CHANGE
+    } else if (options.includeRecoverOperation && util.hasKey(otherMod, key)) {
+      operationsRef[key] = OPERATIONS.RECOVER
+    } else {
+      operationsRef[key] = OPERATIONS.ADD
+    }
+  } else if (util.hasKey(otherState, key)) {
+    operationsRef[key] = OPERATIONS.REMOVE
+  } else {
+    // The property was deleted but didn't exist on the other side
+  }
+}
+
+export function mergeFunction (docA, docB, options) {
+  options = options || {}
+
   let isIdentical = true
+
+  const operations = { a: {}, b: {} }
 
   const input = {
     a: { state: stateWithoutMarker(docA), mods: docA[MARKER] || {} },
@@ -54,6 +78,7 @@ export function mergeFunction (docA, docB) {
       // The property in A is newer
       setModification(result, key, input.a.mods)
       setProperty(result, key, input.a.state)
+      setOperations(operations.a, key, input.a.state, input.b.state, input.b.mods, options)
 
       isIdentical = false
 
@@ -64,6 +89,7 @@ export function mergeFunction (docA, docB) {
       // The property in B is newer
       setModification(result, key, input.b.mods)
       setProperty(result, key, input.b.state)
+      setOperations(operations.b, key, input.b.state, input.a.state, input.a.mods, options)
 
       isIdentical = false
 
@@ -83,6 +109,11 @@ export function mergeFunction (docA, docB) {
 
       isIdentical = isIdentical && property.isIdentical
 
+      if (options.detailed && !property.isIdentical) {
+        operations.a[key] = OPERATIONS.MERGE
+        operations.b[key] = OPERATIONS.MERGE
+      }
+
       continue
     }
 
@@ -94,5 +125,9 @@ export function mergeFunction (docA, docB) {
     }
   }
 
-  return { result, isIdentical }
+  return {
+    result,
+    isIdentical,
+    operations: (options.detailed) ? operations : null
+  }
 }

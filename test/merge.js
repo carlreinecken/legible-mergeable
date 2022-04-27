@@ -203,4 +203,92 @@ describe('merge objects', function () {
     expect(result2).to.eql(expected)
     expect(result1).to.eql(result2)
   })
+
+  describe('detailed option', function () {
+    /**
+     *      | mod. date| merge  |           | compare
+     *  key | x    y   | result | operation | result to y
+     *  ----|-- -------|--------|-----------|---------
+     *  A   | 1  + 2   |  = 2   | y CHANGEs | -
+     *  B   | 2  + 1   |  = 2   | x CHANGEs | CHANGE
+     *  C   | 1  + 2✝  |  = 2✝  | y REMOVEs | -
+     *  D   | 2✝ + 1   |  = 2✝  | x REMOVEs | REMOVE
+     *  E   | 1✝ + 2   |  = 2   | y RECOVERs| -
+     *  F   | 2  + 1✝  |  = 2   | x RECOVERs| RECOVER
+
+     *  G   |    + 1   |  = 1   | y ADDs    | -
+     *  H   | 1  +     |  = 1   | x ADDs    | ADD
+     *  I   | 1  + 1   |  = 1   | -         | -
+     *  J   | 1✝ + 1✝  |  = 1✝  | -         | -
+     */
+
+    it('includes standard operations', function () {
+      const d1 = '2022-03-27'
+      const d2 = '2022-04-27'
+
+      const modsA = { A: d1, B: d2, C: d1, D: d2, E: d1, F: d2, H: d1, I: d1, J: d1 }
+      const docA = { A: 1, B: 2, C: 3, F: 6, H: 8, I: 9, [MARKER]: modsA }
+
+      const modsB = { A: d2, B: d1, C: d2, D: d1, E: d2, F: d1, G: d1, I: d1, J: d1 }
+      const docB = { A: 10, B: 20, D: 30, E: 50, G: 70, I: 9, [MARKER]: modsB }
+
+      const expectedMods = { A: d2, B: d2, C: d2, D: d2, E: d2, F: d2, G: d1, H: d1, I: d1, J: d1 }
+      const expectedMerge = { A: 10, B: 2, E: 50, F: 6, G: 70, H: 8, I: 9, [MARKER]: expectedMods }
+
+      const expectedOperationsA = {
+        B: lm.OPERATIONS.CHANGE,
+        D: lm.OPERATIONS.REMOVE,
+        F: lm.OPERATIONS.ADD,
+        H: lm.OPERATIONS.ADD
+      }
+
+      const expectedOperationsB = {
+        A: lm.OPERATIONS.CHANGE,
+        C: lm.OPERATIONS.REMOVE,
+        E: lm.OPERATIONS.ADD,
+        G: lm.OPERATIONS.ADD
+      }
+
+      const data = lm.mergeForDetails(docA, docB)
+
+      expect(data.isIdentical).to.eql(false)
+      expect(data.result).to.eql(expectedMerge)
+
+      expect(data.operations.a).to.eql(expectedOperationsA)
+      expect(data.operations.b).to.eql(expectedOperationsB)
+
+      const switchedData = lm.mergeForDetails(docB, docA)
+
+      expect(switchedData.isIdentical).to.eql(false)
+      expect(switchedData.result).to.eql(expectedMerge)
+
+      expect(switchedData.operations.a).to.eql(expectedOperationsB)
+      expect(switchedData.operations.b).to.eql(expectedOperationsA)
+    })
+
+    it('includes recover operations', function () {
+      const d1 = '2022-03-27'
+      const d2 = '2022-04-27'
+
+      const docA = { F: 6, H: 8, [MARKER]: { E: d1, F: d2, H: d1 } }
+      const docB = { E: 50, G: 70, [MARKER]: { E: d2, F: d1, G: d1 } }
+      const expectedMerge = { E: 50, F: 6, G: 70, H: 8, [MARKER]: { E: d2, F: d2, G: d1, H: d1 } }
+
+      const expectedOperationsA = { F: lm.OPERATIONS.RECOVER, H: lm.OPERATIONS.ADD }
+      const expectedOperationsB = { E: lm.OPERATIONS.RECOVER, G: lm.OPERATIONS.ADD }
+
+      const data = lm.mergeForDetails(docA, docB, { includeRecoverOperation: true })
+
+      expect(data.operations.a).to.eql(expectedOperationsA)
+      expect(data.operations.b).to.eql(expectedOperationsB)
+
+      const switchedData = lm.mergeForDetails(docB, docA, { includeRecoverOperation: true })
+
+      expect(switchedData.operations.a).to.eql(expectedOperationsB)
+      expect(switchedData.operations.b).to.eql(expectedOperationsA)
+
+      // just to be sure
+      expect(data.result).to.eql(expectedMerge)
+    })
+  })
 })
