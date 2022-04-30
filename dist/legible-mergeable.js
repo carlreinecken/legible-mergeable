@@ -10,10 +10,19 @@
   // with the MARKER are ignored when iterating over the mergeable.
   const POSITION_KEY = MERGEABLE_MARKER + '.position';
 
+  const OPERATIONS = {
+    ADD: 'ADD',
+    REMOVE: 'REMOVE',
+    RECOVER: 'RECOVER',
+    CHANGE: 'CHANGE',
+    MERGE: 'MERGE'
+  };
+
   var constants = /*#__PURE__*/Object.freeze({
     __proto__: null,
     MERGEABLE_MARKER: MERGEABLE_MARKER,
-    POSITION_KEY: POSITION_KEY
+    POSITION_KEY: POSITION_KEY,
+    OPERATIONS: OPERATIONS
   });
 
   function hasKey (object, key) {
@@ -255,23 +264,44 @@
     return result
   }
 
-  function setModification (resultReference, mods, key) {
-    resultReference[MERGEABLE_MARKER][key] = mods[key];
+  function setModification (resultRef, key, mods) {
+    resultRef[MERGEABLE_MARKER][key] = mods[key];
   }
 
-  function setProperty (resultReference, state, key) {
+  function setProperty (resultRef, key, state) {
     if (hasKey(state, key)) {
       if (isPropertyMergeable(state[key])) {
-        resultReference[key] = clone(state[key]);
+        resultRef[key] = clone(state[key]);
       } else {
-        resultReference[key] = deepCopy(state[key]);
+        resultRef[key] = deepCopy(state[key]);
       }
     }
-    // else: The property was deleted
   }
 
-  function mergeFunction (docA, docB) {
+  function setOperations (operationsRef, key, state, otherState, otherMod, options) {
+    if (!options.detailed) {
+      return
+    }
+
+    if (hasKey(state, key)) {
+      if (hasKey(otherState, key)) {
+        operationsRef[key] = OPERATIONS.CHANGE;
+      } else if (options.includeRecoverOperation && hasKey(otherMod, key)) {
+        operationsRef[key] = OPERATIONS.RECOVER;
+      } else {
+        operationsRef[key] = OPERATIONS.ADD;
+      }
+    } else if (hasKey(otherState, key)) {
+      operationsRef[key] = OPERATIONS.REMOVE;
+    } else ;
+  }
+
+  function mergeFunction (docA, docB, options) {
+    options = options || {};
+
     let isIdentical = true;
+
+    const operations = { a: {}, b: {} };
 
     const input = {
       a: { state: stateWithoutMarker(docA), mods: docA[MERGEABLE_MARKER] || {} },
@@ -291,29 +321,31 @@
       const aChangedAt = input.a.mods[key] ? new Date(input.a.mods[key]) : null;
       const bChangedAt = input.b.mods[key] ? new Date(input.b.mods[key]) : null;
 
-      // The property in A is newer
       if (aChangedAt > bChangedAt) {
-        setProperty(result, input.a.state, key);
-        setModification(result, input.a.mods, key);
+        // The property in A is newer
+        setModification(result, key, input.a.mods);
+        setProperty(result, key, input.a.state);
+        setOperations(operations.a, key, input.a.state, input.b.state, input.b.mods, options);
 
         isIdentical = false;
 
         continue
       }
 
-      // The property in B is newer
       if (aChangedAt < bChangedAt) {
-        setProperty(result, input.b.state, key);
-        setModification(result, input.b.mods, key);
+        // The property in B is newer
+        setModification(result, key, input.b.mods);
+        setProperty(result, key, input.b.state);
+        setOperations(operations.b, key, input.b.state, input.a.state, input.a.mods, options);
 
         isIdentical = false;
 
         continue
       }
 
-      // The modification date is on both sides the same
       if (hasKey(input.a.mods, key)) {
-        setModification(result, input.a.mods, key);
+        // The modification date is on both sides the same
+        setModification(result, key, input.a.mods);
       }
 
       // Call the merge function recursively if both properties are Mergeables
@@ -324,17 +356,25 @@
 
         isIdentical = isIdentical && property.isIdentical;
 
+        if (options.detailed && !property.isIdentical) {
+          operations.a[key] = OPERATIONS.MERGE;
+          operations.b[key] = OPERATIONS.MERGE;
+        }
+
         continue
       }
 
-      // The property is on both sides the same
       if (hasKey(input.a.state, key)) {
+        // The property should be the same on both sides
         result[key] = deepCopy(input.a.state[key]);
       }
-      // else: The property was deleted on both sides
     }
 
-    return { result, isIdentical }
+    return {
+      result,
+      isIdentical,
+      operations: (options.detailed) ? operations : null
+    }
   }
 
   function createProxy (dump, options) {
@@ -770,6 +810,7 @@
 
   var main = {
     ...constants,
+
     ...errors,
 
     merge (mergeableA, mergeableB) {
@@ -792,6 +833,17 @@
       }
 
       return result
+    },
+
+    mergeForDetails (mergeableA, mergeableB, options) {
+      options = options || { includeRecoverOperation: false };
+      options.detailed = true;
+
+      if (!isObject(mergeableA) || !isObject(mergeableB)) {
+        throw new MergeableExpectedObjectError()
+      }
+
+      return mergeFunction(mergeableA, mergeableB, options)
     },
 
     createProxy,
