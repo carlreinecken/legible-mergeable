@@ -110,6 +110,7 @@ export function mergeFunction (docA, docB, options) {
       isIdentical = isIdentical && property.isIdentical
 
       if (options.detailed && !property.isIdentical) {
+        // TODO: this is untested
         operations.a[key] = OPERATIONS.MERGE
         operations.b[key] = OPERATIONS.MERGE
       }
