@@ -5,7 +5,10 @@
   "license": "MIT",
   "description": "",
   "author": "Carl Reinecken",
-  "main": "dist/legible-mergeable.js",
+  "exports": {
+    "import": "./src/main.js",
+    "require": "./dist/legible-mergeable.js"
+  },
   "type": "module",
   "scripts": {
     "pretest": "npm run lint",
@@ -13,8 +16,8 @@
     "lint": "standard --fix",
     "clean": "rm -r dist && mkdir dist",
     "prebuild": "npm run lint && npm run clean",
-    "build": "rollup src/main.js --file dist/legible-mergeable.js --format umd --name legibleMergeable",
-    "postbuild": "terser dist/legible-mergeable.js > dist/legible-mergeable.min.js"
+    "build": "rollup src/main.js --file dist/legible-mergeable.umd.js --format umd --name legibleMergeable",
+    "postbuild": "terser dist/legible-mergeable.umd.js > dist/legible-mergeable.umd.min.js"
   },
   "devDependencies": {
     "chai": "^4.2.0",

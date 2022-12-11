@@ -357,6 +357,7 @@
         isIdentical = isIdentical && property.isIdentical;
 
         if (options.detailed && !property.isIdentical) {
+          // TODO: this is untested
           operations.a[key] = OPERATIONS.MERGE;
           operations.b[key] = OPERATIONS.MERGE;
         }
@@ -540,11 +541,12 @@
   /**
    * Transforms the `mergeable` to a sorted array with its elements. The order
    * is defined by the positions of the elements. The position is expected to be
-   * on the positionKey or fallbacks to the default. The marker is ignored, if
-   * the mergeable should be rebuild later, the modifications need to be preserved
-   * separately. The `indexKey` can be defined which preserves the key in the
-   * element itself, otherwise the original mergeable can't be rebuild. This isn't
-   * needed if the key is already inside the element.
+   * on the positionKey or fallbacks to the default.
+   *
+   * The marker is ignored, so if the mergeable should be rebuild later, the
+   * modifications need to be preserved separately. The `indexKey` can be
+   * defined which preserves the key in the element itself, this isn't needed
+   * if the key is already inside the element.
    */
   function sorted (mergeable, options) {
     options = options || {};
@@ -733,7 +735,7 @@
     // options = options || {}
     // const positionKey = options.positionKey || POSITION_KEY
     // TODO: implement reposition()
-    // TODO: this could take over the functionality that push() currently has: only
+    // IDEA: this could take over the functionality that push() currently has: only
     //       generate a position for a given key. but then this would be
     //       opinionated to "reposition" at the end...
   }
@@ -758,6 +760,7 @@
   /**
    * This function does not exist (yet), because with
    * `move(mergeable, key, null)` the same is achievable.
+   * TODO: implement as alias
    */
   // function unshift () {}
 
@@ -769,6 +772,7 @@
         // TODO: be more gentle, rather sort by a key as fallback.
         //       but where to get it?! the sorted function could have an option
         //       like `fallbackSortKey`, but what if the key is still not there?
+        // IDEA: just use the "key" in the sorted() function as fallback
         throw new PositionMissingInMergableError({ positionKey })
       }
 
